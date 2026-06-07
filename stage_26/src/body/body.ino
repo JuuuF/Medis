@@ -3,10 +3,7 @@
 // -----------------------------------------------------------------------
 // Strip settings
 
-#define LED_PIN_1 3
-#define LED_PIN_2 6
-#define LED_PIN_3 9
-#define LED_PIN_4 12
+#define LED_PIN 6
 
 #define DEBUG
 
@@ -18,7 +15,10 @@
 #define CHIPSET WS2811
 #endif  // DEBUG
 
-#define NUM_LEDS 40
+#define MATRIX_HEIGHT 24
+#define MATRIX_WIDTH 5
+#define NUM_LEDS (MATRIX_HEIGHT * MATRIX_WIDTH)
+
 #define BRIGHTNESS 255
 
 // -----------------------------------------------------------------------
@@ -33,18 +33,8 @@
 #define SMOKENOISE_DIMMER 140       // Smoke dimming: 1 = thick smoke/more obscuring/flickery; 255 = compress smoke/less obscuring
 #define SMOKENOISESCALE 200         // How flickery the smoke is: 0 = drift wide; 255 = smoke cuts out flame early
 
-#define NUM_LAYERS 2
-#define FIRENOISE 0
-#define SMOKENOISE 1
-#define STRIP_NOISE_OFFSET 50000UL
-
 // -----------------------------------------------------------------------
-// Incremental noise accumulators — advanced by fixed deltas each frame,
-// no dependency on millis() or any clock. uint32_t wrapping is harmless;
-// inoise16 treats the space as toroidal so the effect continues seamlessly.
 
-// Tuned to match the original feel at ~8ms per frame.
-// Tweak these to change speed without touching the noise scale defines.
 #define CTRL1_STEP (11UL * 8)
 #define CTRL2_STEP (13UL * 8)
 #define FIRE_STEP (5UL * FIRESPEED * 8)
@@ -55,12 +45,11 @@ uint32_t acc_ctrl2 = 100000UL;  // matches original offset so noise starts varie
 uint32_t acc_fire = 0;
 uint32_t acc_smoke = 0;
 
-// -----------------------------------------------------------------------
 
-CRGB leds_1[NUM_LEDS];
-CRGB leds_2[NUM_LEDS];
-CRGB leds_3[NUM_LEDS];
-CRGB leds_4[NUM_LEDS];
+CRGB leds[NUM_LEDS];
+uint8_t heat[NUM_LEDS];
+
+// -----------------------------------------------------------------------
 
 DEFINE_GRADIENT_PALETTE(hot_gp){
   0, 0, 0, 0,          // 0x000000
@@ -95,33 +84,17 @@ DEFINE_GRADIENT_PALETTE(custom_fire_gp){
 
 CRGBPalette32 hotPalette = custom_fire_gp;
 
-uint32_t nx[NUM_LAYERS];
-uint32_t nz[NUM_LAYERS];
-uint32_t scale_n[NUM_LAYERS];
-
-uint8_t noise[4][NUM_LAYERS][NUM_LEDS];
-uint8_t heat[4][NUM_LEDS];
-
 void Fire1D(CRGB *leds, uint8_t strip);
 
 // -----------------------------------------------------------------------
 
 void setup() {
-  pinMode(LED_PIN_1, OUTPUT);
-  pinMode(LED_PIN_2, OUTPUT);
-  pinMode(LED_PIN_3, OUTPUT);
-  pinMode(LED_PIN_4, OUTPUT);
-  FastLED.addLeds<CHIPSET, LED_PIN_1, COLOR_ORDER>(leds_1, NUM_LEDS);
-  FastLED.addLeds<CHIPSET, LED_PIN_2, COLOR_ORDER>(leds_2, NUM_LEDS);
-  FastLED.addLeds<CHIPSET, LED_PIN_3, COLOR_ORDER>(leds_3, NUM_LEDS);
-  FastLED.addLeds<CHIPSET, LED_PIN_4, COLOR_ORDER>(leds_4, NUM_LEDS);
+  pinMode(LED_PIN, OUTPUT);
+  FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(DISABLE_DITHER);
 
-  fill_solid(leds_1, NUM_LEDS, CRGB::Black);
-  fill_solid(leds_2, NUM_LEDS, CRGB::Black);
-  fill_solid(leds_3, NUM_LEDS, CRGB::Black);
-  fill_solid(leds_4, NUM_LEDS, CRGB::Black);
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
 }
 
@@ -133,10 +106,7 @@ void loop() {
     acc_fire += FIRE_STEP;
     acc_smoke += SMOKE_STEP;
 
-    Fire1D(leds_1, 0);
-    Fire1D(leds_2, 1);
-    Fire1D(leds_3, 2);
-    Fire1D(leds_4, 3);
+    Fire1D(leds, 0);
     FastLED.show();
   }
 }
@@ -144,45 +114,34 @@ void loop() {
 // -----------------------------------------------------------------------
 
 void Fire1D(CRGB *leds, uint8_t strip) {
-  uint32_t offset = strip * STRIP_NOISE_OFFSET;
 
-  uint16_t ctrl1 = inoise16(acc_ctrl1 + offset, 0UL, 0UL);
-  uint16_t ctrl2 = inoise16(acc_ctrl2 + offset, 0UL, 0UL);
+  uint16_t ctrl1 = inoise16(acc_ctrl1, 0UL, 0UL);
+  uint16_t ctrl2 = inoise16(acc_ctrl2, 0UL, 0UL);
   uint16_t ctrl = (ctrl1 >> 1) + (ctrl2 >> 1);
 
-  nx[FIRENOISE] = 3UL * ctrl * FIRESPEED;
-  nz[FIRENOISE] = acc_fire + offset;
-  scale_n[FIRENOISE] = scale8(ctrl1, FIRENOISESCALE);
+  uint32_t fire_nx = 3UL * ctrl * FIRESPEED;
+  uint32_t fire_nz = acc_fire;
+  uint8_t fire_scale = scale8(ctrl1, FIRENOISESCALE);
 
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint32_t off = (uint32_t)scale_n[FIRENOISE] * i;
-    noise[strip][FIRENOISE][i] =
-      inoise16(nx[FIRENOISE] + off, nz[FIRENOISE]) >> 8;
-  }
+  uint32_t smoke_nx = 3UL * ctrl * (uint32_t)SMOKESPEED;
+  uint32_t smoke_nz = acc_smoke;
+  uint8_t smoke_scale = scale8(ctrl1, SMOKENOISESCALE);
 
-  nx[SMOKENOISE] = 3UL * ctrl * SMOKESPEED;
-  nz[SMOKENOISE] = acc_smoke + offset;
-  scale_n[SMOKENOISE] = scale8(ctrl1, SMOKENOISESCALE);
-
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint32_t off = (uint32_t)scale_n[SMOKENOISE] * i;
-    uint16_t raw = inoise16(nx[SMOKENOISE] + off, nz[SMOKENOISE]);
-    noise[strip][SMOKENOISE][i] = min(raw / SMOKENOISE_DIMMER, 255);
-  }
-
-  heat[strip][0] = max(noise[strip][FIRENOISE][0], 120);
+  // Pass 1: build heat[] — fire noise computed per pixel, not stored
+  heat[0] = max((uint8_t)(inoise16(fire_nx, fire_nz) >> 8), (uint8_t)120);
   for (uint8_t i = NUM_LEDS - 1; i > 0; i--) {
-    heat[strip][i] = (heat[strip][i] * 1 + heat[strip][i - 1] * 3) / 4;
-    // (heat[strip][i - 1] * 3 + heat[strip][max(i-2, 0)]) / 4;
+    heat[i] = (heat[i] + heat[i - 1] * 3) / 4;
   }
+  heat[0] = inoise16(fire_nx, fire_nz) >> 8;  // restore raw base (two cheap calls, same result)
 
-  heat[strip][0] = noise[strip][FIRENOISE][0];
-
+  // Pass 2: apply dim + palette + smoke — all noise computed inline
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint8_t dim = 255 - scale8(noise[strip][FIRENOISE][i], FLAMEHEIGHT_RECIP);
-    heat[strip][i] = scale8(heat[strip][i], dim);
+    uint8_t fn = inoise16(fire_nx + (uint32_t)fire_scale * i, fire_nz) >> 8;
+    uint16_t raw = inoise16(smoke_nx + (uint32_t)smoke_scale * i, smoke_nz);
+    uint8_t smoke = (uint8_t)min(raw / SMOKENOISE_DIMMER, 255);
 
-    leds[i] = ColorFromPalette(hotPalette, heat[strip][i], heat[strip][i], LINEARBLEND);
-    leds[i].nscale8(noise[strip][SMOKENOISE][i]);
+    heat[i] = scale8(heat[i], 255 - scale8(fn, FLAMEHEIGHT_RECIP));
+    leds[i] = ColorFromPalette(hotPalette, heat[i], heat[i], LINEARBLEND);
+    leds[i].nscale8(smoke);
   }
 }
