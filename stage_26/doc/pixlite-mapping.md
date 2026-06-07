@@ -46,44 +46,27 @@ Innerhalb Resolumes werden Universen wie folgt auf Subnetze unterteilt:
 | 65-80         | 4                | 0-15              |
 | 81-96         | 5                | 0-15              |
 
-Das Mapping der Universen auf die Pixlite-Outputs geschieht wie folgt:
+Es ergibt sich folgendes Mapping zwischen den PixLite-Outputs, Resolume und DMX-Universen:
 
-| DMX-Universum | PixLite-Output-Bank |
-| ------------- | ------------------- |
-| 0-6           | 1                   |
-| 7-12          | 2                   |
-| 13-18         | 3                   |
-| 19-24         | 4                   |
-| 25-30         | 5                   |
-| 31-36         | 6                   |
-| 37-42         | 7                   |
-| 43-48         | 8                   |
-| 49-54         | 9                   |
-| 55-60         | 10                  |
-| 61-66         | 11                  |
-| 67-72         | 12                  |
-| 73-78         | 13                  |
-| 79-84         | 14                  |
-| 85-90         | 15                  |
-| 91-96         | 16                  |
+| PixLite-Output-Bank | Resolume Start          | Resolume Ende           | DMX-Universen |
+| ------------------- | ----------------------- | ----------------------- | ------------- |
+| 1                   | Subnetz 0, Universum 0  | Subnetz 0, Universum 5  | 1-6           |
+| 2                   | Subnetz 0, Universum 6  | Subnetz 0, Universum 11 | 7-12          |
+| 3                   | Subnetz 0, Universum 12 | Subnetz 1, Universum 1  | 13-18         |
+| 4                   | Subnetz 1, Universum 2  | Subnetz 1, Universum 7  | 19-24         |
+| 5                   | Subnetz 1, Universum 8  | Subnetz 1, Universum 13 | 25-30         |
+| 6                   | Subnetz 1, Universum 14 | Subnetz 2, Universum 3  | 31-36         |
+| 7                   | Subnetz 2, Universum 4  | Subnetz 2, Universum 9  | 37-42         |
+| 8                   | Subnetz 2, Universum 10 | Subnetz 2, Universum 15 | 43-48         |
+| 9                   | Subnetz 3, Universum 0  | Subnetz 3, Universum 5  | 49-54         |
+| 10                  | Subnetz 3, Universum 6  | Subnetz 3, Universum 11 | 55-60         |
+| 11                  | Subnetz 3, Universum 12 | Subnetz 4, Universum 1  | 61-66         |
+| 12                  | Subnetz 4, Universum 2  | Subnetz 4, Universum 7  | 67-72         |
+| 13                  | Subnetz 4, Universum 8  | Subnetz 4, Universum 13 | 73-78         |
+| 14                  | Subnetz 4, Universum 14 | Subnetz 5, Universum 3  | 79-84         |
+| 15                  | Subnetz 5, Universum 4  | Subnetz 5, Universum 9  | 85-90         |
+| 16                  | Subnetz 5, Universum 10 | Subnetz 5, Universum 15 | 91-96         |
 
-Dadurch ergibt sich folgendes Mapping zwischen den PixLite-Outputs und Resolume:
+Sind nun beispielsweise Pixel an Output-Bank 6 angeschlossen, können diese innerhalb Resolumes durch Adressierung des Lumiverses an Subnetz 1, Universum 14 angesteuert werden. Innerhalb des DMX-Netzwerks können diese beginnend bei DMX-Universum 31 angesteuert werden.
 
-| PixLite-Output-Bank | Resolume Start          | Resolume Ende           |
-| ------------------- | ----------------------- | ----------------------- |
-| 1                   | Subnetz 0, Universum 0  | Subnetz 0, Universum 5  |
-| 2                   | Subnetz 0, Universum 6  | Subnetz 0, Universum 11 |
-| 3                   | Subnetz 0, Universum 12 | Subnetz 1, Universum 1  |
-| 4                   | Subnetz 1, Universum 2  | Subnetz 1, Universum 7  |
-| 5                   | Subnetz 1, Universum 8  | Subnetz 1, Universum 13 |
-| 6                   | Subnetz 1, Universum 14 | Subnetz 2, Universum 3  |
-| 7                   | Subnetz 2, Universum 4  | Subnetz 2, Universum 9  |
-| 8                   | Subnetz 2, Universum 10 | Subnetz 2, Universum 15 |
-| 9                   | Subnetz 3, Universum 0  | Subnetz 3, Universum 5  |
-| 10                  | Subnetz 3, Universum 6  | Subnetz 3, Universum 11 |
-| 11                  | Subnetz 3, Universum 12 | Subnetz 4, Universum 1  |
-| 12                  | Subnetz 4, Universum 2  | Subnetz 4, Universum 7  |
-| 13                  | Subnetz 4, Universum 8  | Subnetz 4, Universum 13 |
-| 14                  | Subnetz 4, Universum 14 | Subnetz 5, Universum 3  |
-| 15                  | Subnetz 5, Universum 4  | Subnetz 5, Universum 9  |
-| 16                  | Subnetz 5, Universum 10 | Subnetz 5, Universum 15 |
+Wichtig ist dabei zu beachten, ob DMX-Universen bei 0 oder 1 beginnen zu zählen. Oben genannte Mappings gehen von einer 1-Indizierung der DMX-Universen aus (bedeutet: Das erste Universum hat Index 1, das zweite Index 2 etc.; bei 0-Indizierung hat das erste Universum Index 0, das zweite Index 1 etc.).
