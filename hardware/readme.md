@@ -17,7 +17,7 @@ Einzeln adressierbare LEDs:
 ### Technische Daten
 
 Spannung: 12V
-Stromverbrauch: 14.4W/m = 1.2A/m
+Stromverbrauch: [14.4W/m = 1.2A/m](https://suntechlite.com/power-consumption-of-ws2811-ws2812b-ws2813-ws2815-sk6812/#:~:text=WS2811%20LED%20Strip,3%20LEDs/group)
 
 ### Einbau der LEDs
 
@@ -32,6 +32,7 @@ Dabei ist zu bedenken, dass Netzteile idealerweise bis 80% ihrer Leistung laufen
 (20A * 0.8) / 1.2A/m = 16A / 1.2A/m = 13.3m LEDs.
 
 Es sei dazu gesagt, dass diese Rechnung sehr pessimistisch ausgelegt ist und von einer konstanten Dauerbelastung ausgeht. Realistisch werden diese Verbräuche nicht erreicht, sodass knapp 13m LEDs je 20A Netzteil lediglich als grober Richtwert angenommen werden kann. Erfahrungsgemäß kann ein 20A Netzteil etwa 18m LEDs versorgen, mit gelegentlichem Flackern.
+
 
 ## Netzteile
 
