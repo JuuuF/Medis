@@ -4,7 +4,7 @@ Mapping-Übersicht für PixLite 16 Mk.II
 
 ## Software-Setup
 
-Programm: `Advatek Assistant 2`
+Programm: [Advatek Assistant 2](https://www.advateklighting.com/downloads/software)
 
 ### Output-Konfiguration
 
