@@ -17,21 +17,21 @@ Einzeln adressierbare LEDs:
 ### Technische Daten
 
 Spannung: 12V
-Stromverbrauch: 9W/m = 1.5A/m
+Stromverbrauch: 14.4W/m = 1.2A/m
 
 ### Einbau der LEDs
 
-Bei dem Einbau der LEDs auf der Bühne muss geplant werden, wie viel Strom verbraucht wird. Da die LEDs max. 1.5A/m verbrauchen, kann die maximale Gesamtlänge von LEDs an einem Netzteil wie folgt berechnet werden:
+Bei dem Einbau der LEDs auf der Bühne muss geplant werden, wie viel Strom verbraucht wird. Da die LEDs max. 1.2A/m verbrauchen, kann die maximale Gesamtlänge von LEDs an einem Netzteil wie folgt berechnet werden:
 
 Beispiel: Netzteil mit 20A
 
-20A / 1.5A/m = 13.3m LEDs
+20A / 1.2A/m = 16.7m LEDs
 
 Dabei ist zu bedenken, dass Netzteile idealerweise bis 80% ihrer Leistung laufen sollten. Die Dadurch ergibt sich folgende Rechnung:
 
-(20A * 0.8) / 1.5A/m = 16A / 1.5A/m = 10.7m LEDs.
+(20A * 0.8) / 1.2A/m = 16A / 1.2A/m = 13.3m LEDs.
 
-Es sei dazu gesagt, dass diese Rechnung sehr pessimistisch ausgelegt ist und von einer konstanten Dauerbelastung ausgeht. Realistisch werden diese Verbräuche nicht erreicht, sodass knapp 11m LEDs je 20A Netzteil lediglich als grober Richtwert angenommen werden kann. Erfahrungsgemäß kann ein 20A Netzteil etwa 18m LEDs versorgen, mit gelegentlichem Flackern.
+Es sei dazu gesagt, dass diese Rechnung sehr pessimistisch ausgelegt ist und von einer konstanten Dauerbelastung ausgeht. Realistisch werden diese Verbräuche nicht erreicht, sodass knapp 13m LEDs je 20A Netzteil lediglich als grober Richtwert angenommen werden kann. Erfahrungsgemäß kann ein 20A Netzteil etwa 18m LEDs versorgen, mit gelegentlichem Flackern.
 
 ## Netzteile
 
