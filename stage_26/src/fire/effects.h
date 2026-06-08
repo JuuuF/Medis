@@ -10,7 +10,7 @@ public:
   bool active = true;
   uint8_t effectID = 0;
   virtual void update() = 0;
-  virtual void draw(CRGB *leds) = 0;
+  virtual void draw(CRGB *leds_1, CRGB *leds_2, CRGB *leds_3, CRGB *leds_4) = 0;
   virtual ~Effect() {}
 
 protected:

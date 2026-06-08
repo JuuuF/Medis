@@ -13,6 +13,6 @@ public:
   void update() override {
   }
 
-  void draw(CRGB *leds) override {
+  void draw(CRGB *leds_1, CRGB *leds_2, CRGB *leds_3, CRGB *leds_4) override {
   }
 };
