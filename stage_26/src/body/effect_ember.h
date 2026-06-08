@@ -10,14 +10,14 @@
 // ----------------------------------------------
 // Parameters
 
-#define EMBER_CHARGE_MS 7500      // ms: inhale compression duration
+#define EMBER_CHARGE_MS 10000    // ms: inhale compression duration
 #define EMBER_HOLD_MS 100        // ms: hold at peak pressure
-#define EMBER_BURST_MS 250       // ms: golden-white burst duration
-#define EMBER_WAVE_MS 2000        // ms: heat wave travel time (root→tip)
-#define EMBER_ASH_MS 1000         // ms: ember/ash fade after wave
+#define EMBER_BURST_MS 350       // ms: golden-white burst duration
+#define EMBER_WAVE_MS 2000       // ms: heat wave travel time (root→tip)
+#define EMBER_ASH_MS 1000        // ms: ember/ash fade after wave
 #define EMBER_TAIL_DELAY_MS 300  // ms: tail strips lag behind wings
 
-#define EMBER_CHARGE_BRIGHTNESS 60  // floor brightness during charge (0=black)
+#define EMBER_CHARGE_BRIGHTNESS 20  // floor brightness during charge (0=black)
 #define EMBER_BURST_BRIGHTNESS 200  // additive brightness at burst peak
 #define EMBER_TRAIL_FADE 40         // trail decay subtracted per tick
 #define EMBER_SPAWN_RATE 60         // 0–255 probability of ember spawn per pos
@@ -93,6 +93,8 @@ public:
           phase = EP_BURST;
           phaseStart = now;
           _spawnBurstSparks();
+          // broadcast effect info when changing to burst
+          broadcastEffect(effectID);
         }
         break;
 
