@@ -41,14 +41,16 @@ public:
 
     if (!active) {
       // When ending the effect, check if all sparks are gone
+      bool anyAlive = false;
       for (int i = 0; i < SPARKLE_COUNT; i++) {
         if (sparkles[i].alive) {
+          anyAlive = true;
           break;
         }
-        if (i == SPARKLE_COUNT - 1) {
-          done = true;
-          return;
-        }
+      }
+      if (!anyAlive) {
+        done = true;
+        return;
       }
     } else if (++tickCount % 3 == 0) {
       // Every few ticks, spawn a new sparkle in a dead slot
