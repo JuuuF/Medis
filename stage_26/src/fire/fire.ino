@@ -36,19 +36,22 @@ void setup() {
   // Communication setup
   pinMode(RX_PIN, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 void loop() {
 
   EVERY_N_MILLISECONDS(8) {
-
     update_fire();
 
     Fire1D(leds_1, 0);
     Fire1D(leds_2, 1);
     Fire1D(leds_3, 2);
     Fire1D(leds_4, 3);
+    // fill_solid(leds_1, NUM_LEDS, CRGB::Black);
+    // fill_solid(leds_2, NUM_LEDS, CRGB::Black);
+    // fill_solid(leds_3, NUM_LEDS, CRGB::Black);
+    // fill_solid(leds_4, NUM_LEDS, CRGB::Black);
 
     // Effect handling
     if (activeEffect != nullptr) {
@@ -67,6 +70,8 @@ void loop() {
   // Check for new incoming effect
   if (digitalRead(RX_PIN) == HIGH) {
     uint8_t effectID = receiveEffect();
+    Serial.print("Got effect: ");
+    Serial.println(effectID);
 
     // If we already have an effect playing, abort it.
     if (activeEffect != nullptr) {
@@ -74,6 +79,7 @@ void loop() {
     }
 
     activeEffect = getEffect(effectID);
+    Serial.println("Created effect.");
   }
 }
 
