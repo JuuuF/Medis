@@ -3,8 +3,6 @@
 // -----------------------------------------------------------------------
 // Strip settings
 
-#define DEBUG
-
 #include "config.h"
 #include "fire.h"
 #include "effects.h"
