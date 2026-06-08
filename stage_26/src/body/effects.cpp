@@ -17,8 +17,8 @@ struct EffectEntry {
 
 // Add effects here
 const EffectEntry effects[] = {
-  { []() { return new SparkleEffect(); }, 0},
-  { []() { return new OutlineEffect(); }, 10},
+  { []() { return new SparkleEffect(); }, 5},
+  { []() { return new OutlineEffect(); }, 2},
 };
 
 Effect* pickEffect() {
