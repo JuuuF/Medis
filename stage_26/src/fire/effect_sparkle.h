@@ -8,6 +8,7 @@ class SparkleEffect : public Effect {
 public:
   SparkleEffect()
     : Effect(1) {
+      Serial.println("Sparke effect");
   }
 
   void update() override {

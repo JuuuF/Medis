@@ -12,6 +12,8 @@ CRGB leds_2[NUM_LEDS];
 CRGB leds_3[NUM_LEDS];
 CRGB leds_4[NUM_LEDS];
 
+Effect *activeEffect = nullptr;
+
 // -----------------------------------------------------------------------
 
 void setup() {
@@ -47,13 +49,31 @@ void loop() {
     Fire1D(leds_2, 1);
     Fire1D(leds_3, 2);
     Fire1D(leds_4, 3);
+
+    // Effect handling
+    if (activeEffect != nullptr) {
+      activeEffect->update();
+      if (activeEffect->done) {
+        delete activeEffect;
+        activeEffect = nullptr;
+      } else {
+        activeEffect->draw(leds_1, leds_2, leds_3, leds_4);
+      }
+    }
+
     FastLED.show();
   }
 
+  // Check for new incoming effect
   if (digitalRead(RX_PIN) == HIGH) {
     uint8_t effectID = receiveEffect();
-    Serial.print("Received effect: ");
-    Serial.println(effectID);
+
+    // If we already have an effect playing, abort it.
+    if (activeEffect != nullptr) {
+      delete activeEffect;
+    }
+
+    activeEffect = getEffect(effectID);
   }
 }
 

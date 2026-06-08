@@ -8,6 +8,7 @@ class OutlineEffect : public Effect {
 public:
   OutlineEffect()
     : Effect(2) {
+      Serial.println("Outline effect");
   }
 
   void update() override {
