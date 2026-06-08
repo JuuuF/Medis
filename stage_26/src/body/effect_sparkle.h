@@ -3,6 +3,7 @@
 #include "config.h"
 #include "effects.h"
 #include "mapping.h"
+#include "communication.h"
 
 // ----------------------------------------------
 
@@ -25,11 +26,13 @@ class SparkleEffect : public Effect {
   uint8_t tickCount = 0;
 
 public:
-  SparkleEffect() {
+  SparkleEffect()
+    : Effect(1) {
     startTime = millis();
     for (uint8_t i = 0; i < SPARKLE_COUNT; i++) {
       sparkles[i].alive = false;
     }
+    broadcastEffect(effectID);
   }
 
   void update() override {

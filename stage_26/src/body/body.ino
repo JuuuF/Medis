@@ -6,6 +6,7 @@
 #include "config.h"
 #include "fire.h"
 #include "effects.h"
+#include "communication.h"
 
 CRGB leds[NUM_LEDS];
 Effect *activeEffect = nullptr;
@@ -14,12 +15,17 @@ Effect *activeEffect = nullptr;
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
-  pinMode(OUTPUT_PIN, OUTPUT);
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(DISABLE_DITHER);
   fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
+
+  // Communication Setup
+  pinMode(TX_PIN, OUTPUT);
+  digitalWrite(TX_PIN, LOW);
+
+  Serial.begin(9600);
 }
 
 void loop() {

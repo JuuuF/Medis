@@ -4,6 +4,7 @@
 #include "effects.h"
 #include "fire.h"
 #include "mapping.h"
+#include "communication.h"
 
 // ----------------------------------------------
 
@@ -179,12 +180,10 @@ class OutlineEffect : public Effect {
     drawHorizontalLine(leds, MATRIX_HEIGHT - 1, alpha);
   }
 
-  void writeOutput(bool trigger) {
-    digitalWrite(OUTPUT_PIN, trigger ? HIGH : LOW);
-  }
 
 public:
-  OutlineEffect() {
+  OutlineEffect()
+    : Effect(2) {
     phaseStart = millis();
   }
 
@@ -225,11 +224,10 @@ public:
           // output to other Arduinos
           if (!beat_triggered && brightness > 250) {
             beat_triggered = true;
-            writeOutput(true);
+            broadcastEffect(effectID);
           }
 
           if (elapsed >= OUTLINE_BEAT_MS) {
-            writeOutput(false);
             advancePhase(DECAY);
           }
 
