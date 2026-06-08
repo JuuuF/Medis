@@ -7,10 +7,29 @@
 #define LED_PIN_2 6
 #define LED_PIN_3 9
 #define LED_PIN_4 12
+
+#define DEBUG
+
+#ifdef DEBUG
+#define COLOR_ORDER GRB
+#define CHIPSET WS2812
+#else
 #define COLOR_ORDER BRG
 #define CHIPSET WS2811
+#endif
 #define NUM_LEDS 40
 #define BRIGHTNESS 255
+
+// -----------------------------------------------------------------------
+// Commmunication settings
+
+#define RX_PIN 2
+
+// Timing (microseconds)
+#define BIT_PERIOD_US 1000
+
+volatile bool newRxData = false;
+volatile uint32_t rxData = 0;
 
 // -----------------------------------------------------------------------
 // Fire tuning
@@ -97,6 +116,43 @@ void Fire1D(CRGB *leds, uint8_t strip);
 
 // -----------------------------------------------------------------------
 
+uint8_t receiveEffect() {
+  // 1. Wait for start pulse to go low -> true synchronization point
+  while (digitalRead(RX_PIN) == HIGH) {}
+
+  // 2. Advance exactly to the dead-center of the first data bit (Bit 7)
+  // We skip the remainder of the Start Bit (1000us) and move halfway into Bit 7 (+500us)
+  // Total delay from falling edge to center of Bit 7 = 1500us
+  delayMicroseconds(BIT_PERIOD_US + (BIT_PERIOD_US / 2));
+
+  uint8_t receivedData = 0;
+
+  // 3. Sample 8 data bits sequentially (MSB to LSB)
+  for (uint8_t bit = 0; bit < 8; bit++) {
+    // Read the current state of the RX pin
+    bool readOne = (digitalRead(RX_PIN) == HIGH);
+
+    // Shift first to open the slot, then append our bit
+    receivedData <<= 1;
+    if (readOne) {
+      receivedData |= 0x01;
+    }
+
+    // Only delay if there are more bits left to sample.
+    // Stopping on the last bit prevents us from hanging around during the stop bit
+    // and causing a false double-read.
+    if (bit < 7) {
+      delayMicroseconds(BIT_PERIOD_US);
+    }
+  }
+
+  return receivedData;
+}
+
+
+// -----------------------------------------------------------------------
+
+
 void setup() {
   pinMode(LED_PIN_1, OUTPUT);
   pinMode(LED_PIN_2, OUTPUT);
@@ -113,6 +169,11 @@ void setup() {
   fill_solid(leds_3, NUM_LEDS, CRGB::Black);
   fill_solid(leds_4, NUM_LEDS, CRGB::Black);
   FastLED.show();
+
+  // Communication setup
+  pinMode(RX_PIN, INPUT);
+
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -128,6 +189,12 @@ void loop() {
     Fire1D(leds_3, 2);
     Fire1D(leds_4, 3);
     FastLED.show();
+  }
+
+  if (digitalRead(RX_PIN) == HIGH) {
+    uint8_t effectID = receiveEffect();
+    Serial.print("Received effect: ");
+    Serial.println(effectID);
   }
 }
 
@@ -175,4 +242,24 @@ void Fire1D(CRGB *leds, uint8_t strip) {
     leds[i] = ColorFromPalette(hotPalette, heat[strip][i], heat[strip][i], LINEARBLEND);
     leds[i].nscale8(noise[strip][SMOKENOISE][i]);
   }
+}
+
+
+void fill() {
+  fill_solid(leds_1, NUM_LEDS, CRGB::White);
+  fill_solid(leds_2, NUM_LEDS, CRGB::White);
+  fill_solid(leds_3, NUM_LEDS, CRGB::White);
+  fill_solid(leds_4, NUM_LEDS, CRGB::White);
+  FastLED.show();
+  delay(1000);
+}
+
+void playEffect(uint8_t id) {
+  fill();
+  // switch (id) {
+  //   case 0: fill(); break;
+  //   case 1: /* effect 1 */ break;
+  //   // ... add your effects
+  //   default: break;
+  // }
 }

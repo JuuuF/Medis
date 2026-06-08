@@ -29,6 +29,7 @@ void setup() {
 }
 
 void loop() {
+  static uint8_t i = 0;
 
   EVERY_N_MILLISECONDS(8) {
 
@@ -55,4 +56,9 @@ void loop() {
 
     FastLED.show();
   }
+
+  // if (random() % 100 == 0) {
+  //   broadcastEffect(i);
+  //   i++;
+  // }
 }

@@ -4,7 +4,7 @@
 
 // ----------------------------------------------
 
-#define EFFECT_INTERVAL_S 10  // average seconds between effects
+#define EFFECT_INTERVAL_S 5  // average seconds between effects
 
 // ----------------------------------------------
 
