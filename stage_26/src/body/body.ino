@@ -7,8 +7,10 @@
 
 #include "config.h"
 #include "fire.h"
+#include "effects.h"
 
 CRGB leds[NUM_LEDS];
+Effect *activeEffect = nullptr;
 
 // -----------------------------------------------------------------------
 
@@ -25,12 +27,26 @@ void loop() {
 
   EVERY_N_MILLISECONDS(8) {
 
+    // Fire handling
     update_fire_values();
 
     for (uint8_t col = 0; col < MATRIX_WIDTH; col++) {
       FireBody(col);
       FireHead(col);
     }
+
+    // Effect handling
+    if (activeEffect != nullptr) {
+      activeEffect->update();
+      if (activeEffect->done) {
+        delete activeEffect;
+        activeEffect = nullptr;
+      } else {
+        activeEffect->draw(leds);
+      }
+    }
+
+    maybeSpawnEffect();
 
     FastLED.show();
   }
