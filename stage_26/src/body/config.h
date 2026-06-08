@@ -29,5 +29,10 @@
 #define NUM_LEDS (MATRIX_HEIGHT * MATRIX_WIDTH)
 
 // ----------------------------------------------
+// Arduino communication
+
+#define OUTPUT_PIN 12
+
+// ----------------------------------------------
 
 extern CRGB leds[NUM_LEDS];

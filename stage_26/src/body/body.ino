@@ -16,6 +16,7 @@ Effect *activeEffect = nullptr;
 
 void setup() {
   pinMode(LED_PIN, OUTPUT);
+  pinMode(OUTPUT_PIN, OUTPUT);
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(DISABLE_DITHER);
