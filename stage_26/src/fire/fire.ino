@@ -3,6 +3,7 @@
 #include "config.h"
 #include "fire.h"
 #include "communication.h"
+#include "effects.h"
 
 // -----------------------------------------------------------------------
 
