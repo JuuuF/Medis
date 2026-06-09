@@ -8,10 +8,10 @@
 
 // ─────────────────────────────────────────────
 // Phase Durations
-#define FW_MOURN_MS 10000  // Cold grief desaturation builds from crown down
-#define FW_TEARS_MS 4000   // Tear particles fall; broadcast fires on first tear
-#define FW_FLASH_MS 300    // White resurrection detonation
-#define FW_BLOOM_MS 5000   // Warm golden afterglow decays to normal fire
+#define FW_MOURN_MS 5000  // Cold grief desaturation builds from crown down
+#define FW_TEARS_MS 4000  // Tear particles fall; broadcast fires on first tear
+#define FW_FLASH_MS 300   // White resurrection detonation
+#define FW_BLOOM_MS 5000  // Warm golden afterglow decays to normal fire
 
 // ─────────────────────────────────────────────
 // Mourn-phase colour constants
