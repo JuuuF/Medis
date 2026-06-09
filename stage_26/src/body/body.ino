@@ -7,25 +7,38 @@
 #include "fire.h"
 #include "effects.h"
 #include "communication.h"
+#include "eye.h"
 
 CRGB leds[NUM_LEDS];
+
+#ifndef DEBUG
+CRGB leds_eye[EYE_LEDS];
+#endif
+
 Effect *activeEffect = nullptr;
 
 // -----------------------------------------------------------------------
 
 void setup() {
+  Serial.begin(9600);
+
   pinMode(LED_PIN, OUTPUT);
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+
+#ifndef DEBUG
+  pinMode(EYE_PIN, OUTPUT);
+  FastLED.addLeds<CHIPSET, EYE_PIN, COLOR_ORDER>(leds_eye, EYE_LEDS);
+  fill_solid(leds_eye, EYE_LEDS, CRGB::Black);
+#endif
+
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(DISABLE_DITHER);
-  fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
 
   // Communication Setup
   pinMode(TX_PIN, OUTPUT);
   digitalWrite(TX_PIN, LOW);
-
-  Serial.begin(9600);
 }
 
 void loop() {
@@ -40,6 +53,7 @@ void loop() {
       FireBody(col);
       FireHead(col);
     }
+    /** Disable Fire effect */
     // fill_solid(leds, NUM_LEDS, CRGB::Black);
 
     // Effect handling
@@ -52,8 +66,16 @@ void loop() {
         activeEffect->draw(leds);
       }
     }
+    /** Disable effects */
+    // fill_solid(leds, NUM_LEDS, CRGB::Black);
 
     maybeSpawnEffect();
+
+#ifdef DEBUG
+    renderIndependentEye(leds);
+#else
+    renderIndependentEye(leds_eye);
+#endif
 
     FastLED.show();
   }
