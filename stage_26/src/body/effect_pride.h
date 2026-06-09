@@ -4,7 +4,7 @@
 #include <FastLED.h>
 
 #define PRIDE_REVEAL_MS 3000      // Phase 0: Curtain drops from neck to tail
-#define PRIDE_HOLD_MS 2000        // Phase 1: Static flag held before wings start
+#define PRIDE_HOLD_MS 500         // Phase 1: Static flag held before wings start
 #define PRIDE_WING_CYCLE_MS 4000  // Phase 2: Wing strips dynamically pulse
 #define PRIDE_SPARKLE_MS 2500     // Phase 3: Sparkle away dissolve
 
@@ -34,11 +34,6 @@ public:
     uint32_t now = millis();
     uint32_t elapsed = now - phaseStart;
 
-    // Direct synchronization tracking loop
-    if (phase >= PRIDE_CYCLING) {
-      broadcastEffect(effectID);
-    }
-
     switch (phase) {
       case PRIDE_REVEALING:
         if (elapsed >= PRIDE_REVEAL_MS) {
@@ -51,6 +46,7 @@ public:
         if (elapsed >= PRIDE_HOLD_MS) {
           phase = PRIDE_CYCLING;
           phaseStart = now;
+          broadcastEffect(effectID);
         }
         break;
 
