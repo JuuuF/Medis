@@ -61,12 +61,8 @@ Effect* pickEffect() {
   for (uint8_t i = 0; i < EFFECT_COUNT; i++) {
     total += effects[i].weight;
   }
-  Serial.print("Total: ");
-  Serial.println(total);
 
   uint16_t pick = random(total);
-  Serial.print("Pick: ");
-  Serial.println(pick);
   uint16_t cumulative = 0;
 
   for (uint8_t i = 0; i < EFFECT_COUNT; i++) {
