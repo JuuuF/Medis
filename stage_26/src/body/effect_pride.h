@@ -23,8 +23,9 @@ public:
   PridePhase phase;
   uint32_t phaseStart;
 
-  PrideCascadeEffect()
-    : Effect(6) {
+  PrideCascadeEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Pride Effect");
     phaseStart = millis();
     phase = PRIDE_REVEALING;
     done = false;

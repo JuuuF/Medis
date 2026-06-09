@@ -60,6 +60,7 @@ void loop() {
     if (activeEffect != nullptr) {
       activeEffect->update();
       if (activeEffect->done) {
+        Serial.println("Effect done.");
         delete activeEffect;
         activeEffect = nullptr;
       } else {

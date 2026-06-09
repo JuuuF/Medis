@@ -1,3 +1,4 @@
+#include "fl/stl/stdint.h"
 #include "effects.h"
 
 #include "config.h"
@@ -17,38 +18,66 @@
 // ----------------------------------------------
 
 struct EffectEntry {
-  Effect* (*create)();
+  uint8_t effectID;
   uint8_t weight;
 };
 
-// Add effects here
+// Selection Table Pool
 const EffectEntry effects[] = {
-  { []() { return new SparkleEffect(); }, 5},
-  { []() { return new OutlineEffect(); }, 2},
-  { []() { return new EmberEffect(); }, 4},
-  { []() { return new RebirthEffect(); }, 2},
-  { []() { return new FeatherCascadeEffect(); }, 2},
-  { []() { return new PrideCascadeEffect(); }, 1},
-  { []() { return new CelestialAscensionEffect(); }, 1},
-  { []() { return new FawkesWeepsEffect(); }, 3},
+  { 0, 5 },    // SparkleEffect
+  { 1, 2 },    // OutlineEffect
+  { 2, 4 },    // EmberEffect
+  { 3, 2 },    // RebirthEffect
+  { 4, 2 },    // FeatherCascadeEffect
+  { 5, 1 },    // PrideCascadeEffect
+  { 7, 1 },    // CelestialAscensionEffect
+  { 8, 3 },    // FawkesWeepsEffect
 };
 
+#define EFFECT_COUNT (sizeof(effects) / sizeof(effects[0]))
+
+Effect* createEffectByID(uint8_t id) {
+  switch (id) {
+    case 0: return new SparkleEffect(id);
+    case 1: return new OutlineEffect(id);
+    case 2: return new EmberEffect(id);
+    case 3: return new RebirthEffect(id);
+    case 4: return new FeatherCascadeEffect(id);
+    case 5: return new PrideCascadeEffect(id);
+    case 7: return new CelestialAscensionEffect(id);
+    case 8: return new FawkesWeepsEffect(id);
+
+    default:
+      // Safe fallback mechanism if an invalid ID enters the framework
+      return new SparkleEffect(0);
+  }
+}
+
 Effect* pickEffect() {
-  // Sum up total weight
   uint16_t total = 0;
-  for (auto& e : effects) total += e.weight;
+  for (uint8_t i = 0; i < EFFECT_COUNT; i++) {
+    total += effects[i].weight;
+  }
+  Serial.print("Total: ");
+  Serial.println(total);
 
   uint16_t pick = random(total);
+  Serial.print("Pick: ");
+  Serial.println(pick);
   uint16_t cumulative = 0;
-  for (auto& e : effects) {
-    cumulative += e.weight;
+
+  for (uint8_t i = 0; i < EFFECT_COUNT; i++) {
+    cumulative += effects[i].weight;
     if (pick < cumulative) {
-      return e.create();
+      Serial.print(F("Playing effect ID: "));
+      Serial.println(effects[i].effectID);
+
+      // Query our map with the chosen ID
+      return createEffectByID(effects[i].effectID);
     }
   }
 
-  // Base case: effect 0 (should never be reached!)
-  return effects[0].create();
+  return createEffectByID(effects[0].effectID);
 }
 
 void maybeSpawnEffect() {
@@ -60,16 +89,16 @@ void maybeSpawnEffect() {
 
   uint32_t avgMs = (uint32_t)EFFECT_INTERVAL_S * 1000UL;
   nextSpawn = millis() + random(avgMs / 2, avgMs * 3 / 2);
-
   activeEffect = pickEffect();
 
 #ifdef DEBUG
-  return;
-
-  /** Effect cycling override */
+  /** Sequential Cycle Tool */
   static size_t dbgIdx = 0;
-  nextSpawn = millis() + 3000UL;  // Fast 3-second cycle window
-  activeEffect = effects[dbgIdx++ % (sizeof(effects) / sizeof(effects[0]))].create();
-#endif
+  nextSpawn = millis() + 3000UL;
 
+  uint8_t targetID = effects[dbgIdx % EFFECT_COUNT].effectID;
+  dbgIdx++;
+
+  activeEffect = createEffectByID(targetID);
+#endif
 }

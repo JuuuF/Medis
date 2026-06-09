@@ -40,8 +40,9 @@ public:
   bool broadcastFired;
   uint8_t stretchRamp;
 
-  CelestialAscensionEffect()
-    : Effect(7) {
+  CelestialAscensionEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Ascension Effect");
     phaseStart = millis();
     phase = CA_THERMAL_STRETCH;
     surgeIndex = 0;

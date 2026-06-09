@@ -25,6 +25,6 @@ void broadcastEffect(uint8_t effectID) {
   digitalWrite(TX_PIN, LOW);
 
   interrupts();
-  Serial.print("Sent effect: ");
+  Serial.print("Broadcast effectID: ");
   Serial.println(effectID);
 }

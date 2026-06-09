@@ -182,8 +182,9 @@ class OutlineEffect : public Effect {
 
 
 public:
-  OutlineEffect()
-    : Effect(2) {
+  OutlineEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Outline Effect");
     phaseStart = millis();
   }
 

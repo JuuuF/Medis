@@ -24,10 +24,12 @@ class SparkleEffect : public Effect {
   Sparkle sparkles[SPARKLE_COUNT];
   uint32_t startTime;
   uint8_t tickCount = 0;
+  bool active = false;
 
 public:
-  SparkleEffect()
-    : Effect(1) {
+  SparkleEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Sparkle Effect");
     startTime = millis();
     for (uint8_t i = 0; i < SPARKLE_COUNT; i++) {
       sparkles[i].alive = false;

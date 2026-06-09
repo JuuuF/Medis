@@ -90,8 +90,9 @@ public:
   uint8_t bloomAlpha;
 
   // ─────────────────────────────────────────────
-  FawkesWeepsEffect()
-    : Effect(8) {
+  FawkesWeepsEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Fawke Weeps Effect");
     phaseStart = millis();
     phase = FW_MOURN;
     mournRamp = 0;

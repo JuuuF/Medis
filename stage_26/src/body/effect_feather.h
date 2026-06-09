@@ -55,9 +55,10 @@ public:
 
   FCPulse pulses[FC_PULSE_COUNT];
 
-  FeatherCascadeEffect()
-    : Effect(5)  // effectID = 5 — assign next free ID in your project
+  FeatherCascadeEffect(uint8_t id)
+    : Effect(id)
   {
+    Serial.println("Init Feather Effect");
     phaseStart = millis();
     phase = FC_GLOWING;
     memset(pulses, 0, sizeof(pulses));

@@ -67,8 +67,9 @@ public:
   BurstSpark burstSparks[BURST_SPARK_COUNT];
 
   // ----------------------------------
-  EmberEffect()
-    : Effect(3) {
+  EmberEffect(uint8_t id)
+    : Effect(id) {
+    Serial.println("Init Ember Effect");
     phaseStart = millis();
     phase = EP_CHARGE;
     memset(burstSparks, 0, sizeof(burstSparks));

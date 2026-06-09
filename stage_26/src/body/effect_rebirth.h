@@ -62,9 +62,10 @@ public:
 
   // ----------------------------------
 
-  RebirthEffect()
-    : Effect(4)  // effectID = 4; register a new ID for slaves
+  RebirthEffect(uint8_t id)
+    : Effect(id)  // effectID = 4; register a new ID for slaves
   {
+    Serial.println("Init Rebirth Effect");
     phaseStart = millis();
     phase = RP_COLLAPSE;
     collapseEdge = 0;
