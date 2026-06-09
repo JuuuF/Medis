@@ -24,16 +24,6 @@
 #define FC_PULSE_HUE 28   // slightly warmer than outline
 #define FC_PULSE_WIDTH 2  // half-width in pixels
 
-// Slave / strip parameters
-#define FC_STRIP_DELAY_MS 180  // ms between each sequential strip activation
-#define FC_STRIP_RISE_MS 400   // ms for a strip to fade in fully
-#define FC_STRIP_HOLD_MS 600   // ms strip stays at peak
-#define FC_STRIP_FALL_MS 700   // ms for strip to fade back out
-#define FC_NUM_STRIPS 4
-
-#define FC_FEATHER_HUE 32  // warm gold, matching body pulse
-#define FC_FEATHER_SAT 200
-
 // ─────────────────────────────────────────────
 // Phase enum
 
