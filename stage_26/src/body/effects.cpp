@@ -69,7 +69,7 @@ Effect* pickEffect() {
   for (uint8_t i = 0; i < EFFECT_COUNT; i++) {
     cumulative += effects[i].weight;
     if (pick < cumulative) {
-      Serial.print(F("Playing effect ID: "));
+      Serial.print("Playing effect ID: ");
       Serial.println(effects[i].effectID);
 
       // Query our map with the chosen ID
@@ -99,6 +99,7 @@ void maybeSpawnEffect() {
   uint8_t targetID = effects[dbgIdx % EFFECT_COUNT].effectID;
   dbgIdx++;
 
+  delete activeEffect;
   activeEffect = createEffectByID(targetID);
 #endif
 }
