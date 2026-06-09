@@ -35,17 +35,14 @@ DEFINE_GRADIENT_PALETTE(custom_fire_gp){
 
 CRGBPalette32 hotPalette = custom_fire_gp;
 
-uint32_t nx[NUM_LAYERS];
-uint32_t nz[NUM_LAYERS];
-uint32_t scale_n[NUM_LAYERS];
-
-uint8_t noise[4][NUM_LAYERS][NUM_LEDS];
-uint8_t heat[4][NUM_LEDS];
-
 uint32_t acc_ctrl1 = 0;
 uint32_t acc_ctrl2 = 100000UL;  // matches original offset so noise starts varied
 uint32_t acc_fire = 0;
 uint32_t acc_smoke = 0;
+
+static uint8_t fireNoise[NUM_LEDS];
+static uint8_t smokeNoise[NUM_LEDS];
+static uint8_t heatBuf[NUM_LEDS];
 
 void update_fire() {
   acc_ctrl1 += CTRL1_STEP;
@@ -55,45 +52,47 @@ void update_fire() {
 }
 
 void Fire1D(CRGB *leds, uint8_t strip) {
-  uint32_t offset = strip * STRIP_NOISE_OFFSET;
+  uint32_t offset = (uint32_t)strip * STRIP_NOISE_OFFSET;
 
+  // ── Control signals ──────────────────────────────────────────────────────
   uint16_t ctrl1 = inoise16(acc_ctrl1 + offset, 0UL, 0UL);
   uint16_t ctrl2 = inoise16(acc_ctrl2 + offset, 0UL, 0UL);
   uint16_t ctrl = (ctrl1 >> 1) + (ctrl2 >> 1);
 
-  nx[FIRENOISE] = 3UL * ctrl * FIRESPEED;
-  nz[FIRENOISE] = acc_fire + offset;
-  scale_n[FIRENOISE] = scale8(ctrl1, FIRENOISESCALE);
+  // ── Fire noise layer → fireNoise[] ───────────────────────────────────────
+  uint32_t fire_nx = 3UL * ctrl * FIRESPEED;
+  uint32_t fire_nz = acc_fire + offset;
+  uint8_t fire_scale = scale8(ctrl1, FIRENOISESCALE);
 
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint32_t off = (uint32_t)scale_n[FIRENOISE] * i;
-    noise[strip][FIRENOISE][i] =
-      inoise16(nx[FIRENOISE] + off, nz[FIRENOISE]) >> 8;
+    uint32_t off = (uint32_t)fire_scale * i;
+    fireNoise[i] = inoise16(fire_nx + off, fire_nz) >> 8;
   }
 
-  nx[SMOKENOISE] = 3UL * ctrl * SMOKESPEED;
-  nz[SMOKENOISE] = acc_smoke + offset;
-  scale_n[SMOKENOISE] = scale8(ctrl1, SMOKENOISESCALE);
+  // ── Smoke noise layer → smokeNoise[] ─────────────────────────────────────
+  uint32_t smoke_nx = 3UL * ctrl * SMOKESPEED;
+  uint32_t smoke_nz = acc_smoke + offset;
+  uint8_t smoke_scale = scale8(ctrl1, SMOKENOISESCALE);
 
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint32_t off = (uint32_t)scale_n[SMOKENOISE] * i;
-    uint16_t raw = inoise16(nx[SMOKENOISE] + off, nz[SMOKENOISE]);
-    noise[strip][SMOKENOISE][i] = min(raw / SMOKENOISE_DIMMER, 255);
+    uint32_t off = (uint32_t)smoke_scale * i;
+    uint16_t raw = inoise16(smoke_nx + off, smoke_nz);
+    smokeNoise[i] = (uint8_t)min((uint16_t)(raw / SMOKENOISE_DIMMER), (uint16_t)255);
   }
 
-  heat[strip][0] = max(noise[strip][FIRENOISE][0], 120);
+  // ── Heat diffusion into heatBuf[] ────────────────────────────────────────
+  heatBuf[0] = max(fireNoise[0], (uint8_t)120);
   for (uint8_t i = NUM_LEDS - 1; i > 0; i--) {
-    heat[strip][i] = (heat[strip][i] * 1 + heat[strip][i - 1] * 3) / 4;
-    // (heat[strip][i - 1] * 3 + heat[strip][max(i-2, 0)]) / 4;
+    heatBuf[i] = (heatBuf[i] + heatBuf[i - 1] * 3) >> 2;  // (1×cur + 3×prev) / 4
   }
+  heatBuf[0] = fireNoise[0];
 
-  heat[strip][0] = noise[strip][FIRENOISE][0];
-
+  // ── Height dimming + palette mapping ─────────────────────────────────────
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    uint8_t dim = 255 - scale8(noise[strip][FIRENOISE][i], FLAMEHEIGHT_RECIP);
-    heat[strip][i] = scale8(heat[strip][i], dim);
+    uint8_t dim = 255 - scale8(fireNoise[i], FLAMEHEIGHT_RECIP);
+    heatBuf[i] = scale8(heatBuf[i], dim);
 
-    leds[i] = ColorFromPalette(hotPalette, heat[strip][i], heat[strip][i], LINEARBLEND);
-    leds[i].nscale8(noise[strip][SMOKENOISE][i]);
+    leds[i] = ColorFromPalette(hotPalette, heatBuf[i], heatBuf[i], LINEARBLEND);
+    leds[i].nscale8(smokeNoise[i]);
   }
 }
