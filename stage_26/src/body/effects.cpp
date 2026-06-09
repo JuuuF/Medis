@@ -9,6 +9,7 @@
 #include "effect_rebirth.h"
 #include "effect_feather.h"
 #include "effect_pride.h"
+#include "effect_ascension.h"
 
 #include <FastLED.h>
 
@@ -26,7 +27,8 @@ const EffectEntry effects[] = {
   { []() { return new EmberEffect(); }, 2},
   { []() { return new RebirthEffect(); }, 2},
   { []() { return new FeatherCascadeEffect(); }, 2},
-  { []() { return new PrideCascadeEffect(); }, 2},
+  { []() { return new PrideCascadeEffect(); }, 1},
+  { []() { return new CelestialAscensionEffect(); }, 1},
 };
 
 Effect* pickEffect() {

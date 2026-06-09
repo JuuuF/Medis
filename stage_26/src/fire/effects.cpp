@@ -6,6 +6,7 @@
 #include "effect_rebirth.h"
 #include "effect_feather.h"
 #include "effect_pride.h"
+#include "effect_ascension.h"
 
 Effect* getEffect(uint8_t effectID) {
   switch (effectID) {
@@ -15,6 +16,7 @@ Effect* getEffect(uint8_t effectID) {
     case 4: return new RebirthSlaveEffect();
     case 5: return new FeatherCascadeSlaveEffect();
     case 6: return new PrideCascadeSlaveEffect();
+    case 7: return new CelestialAscensionSlaveEffect();
   }
 
   return nullptr;
