@@ -10,6 +10,7 @@
 #include "effect_feather.h"
 #include "effect_pride.h"
 #include "effect_ascension.h"
+#include "effect_fawkesweeps.h"
 
 #include <FastLED.h>
 
@@ -29,6 +30,7 @@ const EffectEntry effects[] = {
   { []() { return new FeatherCascadeEffect(); }, 2},
   { []() { return new PrideCascadeEffect(); }, 1},
   { []() { return new CelestialAscensionEffect(); }, 1},
+  { []() { return new FawkesWeepsEffect(); }, 3},
 };
 
 Effect* pickEffect() {
