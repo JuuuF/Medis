@@ -4,7 +4,12 @@
 
 // ----------------------------------------------
 
-#define EFFECT_INTERVAL_S 5  // average seconds between effects
+#ifdef DEBUG
+// average seconds between effects
+#define EFFECT_INTERVAL_S 2
+#else
+#define EFFECT_INTERVAL_S 60
+#endif
 
 // ----------------------------------------------
 

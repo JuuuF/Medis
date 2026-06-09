@@ -23,11 +23,9 @@
 #define LED_PIN 6
 
 #ifdef DEBUG
-// Home testing
 #define MATRIX_HEIGHT 24
 #define MATRIX_WIDTH 6
 #else
-// Medis
 #define MATRIX_HEIGHT 28
 #define MATRIX_WIDTH 7
 #endif  // DEBUG

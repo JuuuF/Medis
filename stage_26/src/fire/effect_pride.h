@@ -26,10 +26,11 @@ public:
   PridePhase phase;
   uint32_t phaseStart;
 
-  PrideCascadeSlaveEffect() : Effect(6) {
-    phase = PRIDE_CYCLING; 
-    phaseStart = millis(); 
-    done = false; 
+  PrideCascadeSlaveEffect()
+    : Effect(6) {
+    phase = PRIDE_CYCLING;
+    phaseStart = millis();
+    done = false;
   }
 
   void update() override {
@@ -44,7 +45,7 @@ public:
         }
         break;
 
-      case PRIDE_SPARKLING: // Smooth trailing fade-out phase
+      case PRIDE_SPARKLING:  // Smooth trailing fade-out phase
         if (elapsed >= PRIDE_SPARKLE_MS) {
           phase = PRIDE_DONE;
           done = true;
@@ -60,18 +61,18 @@ public:
     if (phase == PRIDE_DONE) return;
 
     uint32_t nowTime = millis();
-    
+
     // ── 1. Continuous Wave Progress ─────────────────────────────────────────
     uint32_t waveElapsed = (phase == PRIDE_CYCLING) ? (nowTime - phaseStart) : (PRIDE_WING_CYCLE_MS + (nowTime - phaseStart));
     uint16_t waveProgress = (waveElapsed * (256 * PRIDE_CYCLES_WINGS)) / PRIDE_WING_CYCLE_MS;
 
     // ── 2. Emerge & Fade Envelopes ──────────────────────────────────────────
-    uint8_t revealWall = 255; 
+    uint8_t revealWall = 255;
     uint8_t globalAlpha = 255;
 
     if (phase == PRIDE_CYCLING) {
       uint32_t introElapsed = nowTime - phaseStart;
-      const uint16_t INTRO_MS = 1000; // 1 second to fully expand out from base to tip
+      const uint16_t INTRO_MS = 1000;  // 1 second to fully expand out from base to tip
       if (introElapsed < INTRO_MS) {
         revealWall = (introElapsed * 255) / INTRO_MS;
       }
@@ -83,7 +84,7 @@ public:
 
     // ── 3. Strip Rendering Loop ─────────────────────────────────────────────
     for (uint8_t s = 0; s < 4; s++) {
-      CRGB* targetStrip = nullptr;
+      CRGB *targetStrip = nullptr;
       if (s == 0) targetStrip = leds_1;
       else if (s == 1) targetStrip = leds_2;
       else if (s == 2) targetStrip = leds_3;
@@ -116,7 +117,7 @@ public:
         // Apply a feathering soft fade to the edge of the emerging reveal wall
         if (phase == PRIDE_CYCLING && revealWall < 255) {
           uint8_t edgeDistance = revealWall - pxPosition;
-          if (edgeDistance < 40) { // Apply a soft 40-unit fade gradient at the front line
+          if (edgeDistance < 40) {  // Apply a soft 40-unit fade gradient at the front line
             finalColor.nscale8((edgeDistance * 255) / 40);
           }
         }

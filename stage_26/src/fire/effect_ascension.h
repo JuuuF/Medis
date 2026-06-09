@@ -7,20 +7,20 @@
 
 // ─────────────────────────────────────────────
 // Hardware Spatial Configurations & Structural Rules
-#define CA_SLAVE_STRIP_COUNT      4
+#define CA_SLAVE_STRIP_COUNT 4
 
 // ── Wing ripple constants ────────────────────────────────────────────────────
 // Wings execute CA_WING_RIPPLE_COUNT rapid feather-ripple passes.
 // Each ripple's velocity is scaled upward each pass by CA_WING_ACCEL_SHIFT bits.
-#define CA_WING_RIPPLE_COUNT      5     // Total aerodynamic ripple passes per wing
-#define CA_WING_BASE_SPEED_FP     180   // Fixed-point speed for ripple 0 (pixels per second * 64)
-#define CA_WING_ACCEL_SHIFT       1     // velocity <<= 1 per completed ripple (doubles each pass)
+#define CA_WING_RIPPLE_COUNT 5     // Total aerodynamic ripple passes per wing
+#define CA_WING_BASE_SPEED_FP 180  // Fixed-point speed for ripple 0 (pixels per second * 64)
+#define CA_WING_ACCEL_SHIFT 1      // velocity <<= 1 per completed ripple (doubles each pass)
 
 // ── Tail streamer constants ──────────────────────────────────────────────────
 // Tails use two independent layered velocities; strip 2 slightly faster.
-#define CA_TAIL_DELAY_MS          220   // Tail activation lag after wing launch
-#define CA_TAIL2_SPEED_FP         260   // Fixed-point speed strip 2 (faster)
-#define CA_TAIL3_SPEED_FP         190   // Fixed-point speed strip 3 (slower, trailing)
+#define CA_TAIL_DELAY_MS 220   // Tail activation lag after wing launch
+#define CA_TAIL2_SPEED_FP 260  // Fixed-point speed strip 2 (faster)
+#define CA_TAIL3_SPEED_FP 190  // Fixed-point speed strip 3 (slower, trailing)
 
 // ── Shared rendering palette constants ──────────────────────────────────────
 // Head pixel: white-hot (255,255,200)
@@ -31,7 +31,7 @@
 // beyond: zero additive contribution
 
 // ── Settle/cool-down phase ───────────────────────────────────────────────────
-#define CA_SLAVE_SETTLE_MS        900   // Duration of the post-wave cool-down glow
+#define CA_SLAVE_SETTLE_MS 900  // Duration of the post-wave cool-down glow
 
 // ─────────────────────────────────────────────
 // Phase Definitions
@@ -46,47 +46,48 @@ enum CASlavePhase : uint8_t {
 // ═════════════════════════════════════════════
 class CelestialAscensionSlaveEffect : public Effect {
 public:
-  uint32_t     phaseStart;
+  uint32_t phaseStart;
   CASlavePhase phase;
 
   // ── Wing strip state (strips 0 & 1) ──────────────────────────────────────
   // Each wing tracks: which ripple pass it is on, current fixed-point position,
   // and a snapshot of the current pass's velocity.
-  uint8_t  wingRipple[2];          // Current ripple index per wing (0 … CA_WING_RIPPLE_COUNT-1)
-  uint16_t wingPosFP[2];           // Fixed-point position within current ripple (0…strip_len*64)
-  uint16_t wingSpeedFP[2];         // Current ripple speed (FP) per wing
-  bool     wingDone[2];            // Wing has completed all ripple passes
+  uint8_t wingRipple[2];    // Current ripple index per wing (0 … CA_WING_RIPPLE_COUNT-1)
+  uint16_t wingPosFP[2];    // Fixed-point position within current ripple (0…strip_len*64)
+  uint16_t wingSpeedFP[2];  // Current ripple speed (FP) per wing
+  bool wingDone[2];         // Wing has completed all ripple passes
 
   // ── Tail strip state (strips 2 & 3) ──────────────────────────────────────
-  uint16_t tailPosFP[2];           // Fixed-point tail position (strips 2,3)
-  bool     tailActive[2];          // Tail has passed its delay window
-  bool     tailDone[2];            // Tail has fully exited the strip
-  bool     tailStarted[2];         // One-time init guard per tail
+  uint16_t tailPosFP[2];  // Fixed-point tail position (strips 2,3)
+  bool tailActive[2];     // Tail has passed its delay window
+  bool tailDone[2];       // Tail has fully exited the strip
+  bool tailStarted[2];    // One-time init guard per tail
 
-  CelestialAscensionSlaveEffect() : Effect(7) {
+  CelestialAscensionSlaveEffect()
+    : Effect(7) {
     phaseStart = millis();
-    phase      = CAS_PROPAGATING;
+    phase = CAS_PROPAGATING;
 
     // Initialise wing state
     for (uint8_t i = 0; i < 2; i++) {
-      wingRipple[i]  = 0;
-      wingPosFP[i]   = 0;
+      wingRipple[i] = 0;
+      wingPosFP[i] = 0;
       wingSpeedFP[i] = CA_WING_BASE_SPEED_FP;
-      wingDone[i]    = false;
+      wingDone[i] = false;
     }
 
     // Initialise tail state
     for (uint8_t i = 0; i < 2; i++) {
-      tailPosFP[i]   = 0;
-      tailActive[i]  = false;
-      tailDone[i]    = false;
+      tailPosFP[i] = 0;
+      tailActive[i] = false;
+      tailDone[i] = false;
       tailStarted[i] = false;
     }
   }
 
   // ─────────────────────────────────────────────
   void update() override {
-    uint32_t now     = millis();
+    uint32_t now = millis();
     uint32_t elapsed = now - phaseStart;
 
     if (phase == CAS_PROPAGATING) {
@@ -117,7 +118,7 @@ public:
       // ── Activate tails after delay window ────────────────────────────────
       for (uint8_t i = 0; i < 2; i++) {
         if (!tailActive[i] && elapsed >= CA_TAIL_DELAY_MS) {
-          tailActive[i]  = true;
+          tailActive[i] = true;
           tailStarted[i] = true;
         }
         if (!tailActive[i] || tailDone[i]) continue;
@@ -128,7 +129,7 @@ public:
         uint16_t maxFP = (uint16_t)NUM_LEDS * 64;
         if (tailPosFP[i] >= maxFP) {
           tailPosFP[i] = maxFP;
-          tailDone[i]  = true;
+          tailDone[i] = true;
         }
       }
 
@@ -136,14 +137,13 @@ public:
       bool allWingsDone = wingDone[0] && wingDone[1];
       bool allTailsDone = tailDone[0] && tailDone[1];
       if (allWingsDone && allTailsDone) {
-        phase      = CAS_SETTLE;
+        phase = CAS_SETTLE;
         phaseStart = now;
       }
-    }
-    else if (phase == CAS_SETTLE) {
+    } else if (phase == CAS_SETTLE) {
       if (elapsed >= CA_SLAVE_SETTLE_MS) {
         phase = CAS_DONE;
-        done  = true;
+        done = true;
       }
     }
   }
@@ -164,7 +164,7 @@ public:
       for (uint8_t i = 0; i < 2; i++) {
         if (wingDone[i]) continue;
         CRGB* strip = stripPtrs[i];
-        uint8_t  len    = stripLens[i];
+        uint8_t len = stripLens[i];
 
         // Convert FP position to integer pixel index
         uint8_t front = (uint8_t)(wingPosFP[i] >> 6);  // >>6 = /64
@@ -175,8 +175,8 @@ public:
 
         // ── Render trailing heat gradient ────────────────────────────────
         // Layer 0 (head): white-hot core, anti-aliased with fractional blend
-        _renderWingPixel(strip, len, front,     255, 255, 200, 255);          // full pixel
-        _renderWingPixel(strip, len, front + 1, 255, 255, 200, frac);         // fractional overhang
+        _renderWingPixel(strip, len, front, 255, 255, 200, 255);       // full pixel
+        _renderWingPixel(strip, len, front + 1, 255, 255, 200, frac);  // fractional overhang
 
         // Layer -1: bright orange
         if (front >= 1)
@@ -199,15 +199,15 @@ public:
       for (uint8_t i = 0; i < 2; i++) {
         if (!tailActive[i]) continue;
         CRGB* strip = stripPtrs[i + 2];
-        uint8_t  len    = stripLens[i + 2];
+        uint8_t len = stripLens[i + 2];
 
         uint8_t front = (uint8_t)(tailPosFP[i] >> 6);
         if (front >= len) front = len - 1;
         uint8_t frac = (uint8_t)((tailPosFP[i] & 0x3F) << 2);
 
         // Tails use a wider, heavier gradient to simulate trailing heat mass
-        _renderWingPixel(strip, len, front,     255, 255, 200, 255);          // white-hot tip
-        _renderWingPixel(strip, len, front + 1, 255, 255, 200, frac);         // fractional
+        _renderWingPixel(strip, len, front, 255, 255, 200, 255);       // white-hot tip
+        _renderWingPixel(strip, len, front + 1, 255, 255, 200, frac);  // fractional
 
         if (front >= 1)
           _renderWingPixel(strip, len, front - 1, 255, 120, 0, 255);
@@ -236,14 +236,14 @@ public:
     // ════════════════════════════════════════
     else if (phase == CAS_SETTLE) {
       uint32_t elapsed = millis() - phaseStart;
-      uint8_t  factor  = (uint8_t)((elapsed * 255UL) / CA_SLAVE_SETTLE_MS);
-      uint8_t  glow    = scale8(50, 255 - factor);  // warm amber residual, decays to 0
+      uint8_t factor = (uint8_t)((elapsed * 255UL) / CA_SLAVE_SETTLE_MS);
+      uint8_t glow = scale8(50, 255 - factor);  // warm amber residual, decays to 0
 
       if (glow == 0) return;
 
       for (uint8_t s = 0; s < CA_SLAVE_STRIP_COUNT; s++) {
-        CRGB*   strip = stripPtrs[s];
-        uint8_t len   = stripLens[s];
+        CRGB* strip = stripPtrs[s];
+        uint8_t len = stripLens[s];
         for (uint8_t p = 0; p < len; p++) {
           strip[p].r = qadd8(strip[p].r, glow);
           strip[p].g = qadd8(strip[p].g, glow >> 1);  // zero-cost bitwise half
@@ -257,9 +257,9 @@ private:
   // ── Additive pixel writer with per-call alpha scaling ────────────────────
   // Safely bounds-checks against strip length before writing.
   inline void _renderWingPixel(CRGB* strip, uint8_t len,
-                                uint8_t pos,
-                                uint8_t r, uint8_t g, uint8_t b,
-                                uint8_t alpha) {
+                               uint8_t pos,
+                               uint8_t r, uint8_t g, uint8_t b,
+                               uint8_t alpha) {
     if (pos >= len) return;
     strip[pos].r = qadd8(strip[pos].r, scale8(r, alpha));
     strip[pos].g = qadd8(strip[pos].g, scale8(g, alpha));

@@ -56,7 +56,7 @@ public:
         break;
 
       case RS_DEAD:
-        if (elapsed >= REBIRTH_DEAD_MS) { // Adjust the timing a little :)
+        if (elapsed >= REBIRTH_DEAD_MS) {  // Adjust the timing a little :)
           phase = RS_WAVE;
           phaseStart = now;
         }

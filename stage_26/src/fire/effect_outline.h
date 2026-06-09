@@ -24,8 +24,8 @@ uint16_t getSkewedSpeed() {
   uint32_t skewed = r * r;
 
   // 3. Map that skewed value from 0-65025 into your target speed range (e.g., 200 to 800)
-  uint16_t minSpeed = 50;
-  uint16_t maxSpeed = 600;
+  uint16_t minSpeed = 100;
+  uint16_t maxSpeed = 800;
 
   return minSpeed + ((skewed * (maxSpeed - minSpeed)) / 65025UL);
 }

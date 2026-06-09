@@ -22,9 +22,9 @@ struct EffectEntry {
 
 // Add effects here
 const EffectEntry effects[] = {
-  { []() { return new SparkleEffect(); }, 2},
+  { []() { return new SparkleEffect(); }, 5},
   { []() { return new OutlineEffect(); }, 2},
-  { []() { return new EmberEffect(); }, 2},
+  { []() { return new EmberEffect(); }, 4},
   { []() { return new RebirthEffect(); }, 2},
   { []() { return new FeatherCascadeEffect(); }, 2},
   { []() { return new PrideCascadeEffect(); }, 1},
