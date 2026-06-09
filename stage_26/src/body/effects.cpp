@@ -6,6 +6,7 @@
 #include "effect_sparkle.h"
 #include "effect_outline.h"
 #include "effect_ember.h"
+#include "effect_rebirth.h"
 
 #include <FastLED.h>
 
@@ -18,9 +19,10 @@ struct EffectEntry {
 
 // Add effects here
 const EffectEntry effects[] = {
-  // { []() { return new SparkleEffect(); }, 2},
-  // { []() { return new OutlineEffect(); }, 2},
+  { []() { return new SparkleEffect(); }, 2},
+  { []() { return new OutlineEffect(); }, 2},
   { []() { return new EmberEffect(); }, 2},
+  { []() { return new RebirthEffect(); }, 2},
 };
 
 Effect* pickEffect() {
