@@ -40,6 +40,7 @@ void loop() {
       FireBody(col);
       FireHead(col);
     }
+    // fill_solid(leds, NUM_LEDS, CRGB::Black);
 
     // Effect handling
     if (activeEffect != nullptr) {

@@ -7,6 +7,7 @@
 #include "effect_outline.h"
 #include "effect_ember.h"
 #include "effect_rebirth.h"
+#include "effect_feather.h"
 
 #include <FastLED.h>
 
@@ -23,6 +24,7 @@ const EffectEntry effects[] = {
   { []() { return new OutlineEffect(); }, 2},
   { []() { return new EmberEffect(); }, 2},
   { []() { return new RebirthEffect(); }, 2},
+  { []() { return new FeatherCascadeEffect(); }, 2},
 };
 
 Effect* pickEffect() {
