@@ -80,9 +80,4 @@ void loop() {
 
     FastLED.show();
   }
-
-  // if (random() % 100 == 0) {
-  //   broadcastEffect(i);
-  //   i++;
-  // }
 }

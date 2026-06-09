@@ -19,18 +19,18 @@ struct Sparkle {
   bool alive;
 };
 
-
 class SparkleEffect : public Effect {
   Sparkle sparkles[SPARKLE_COUNT];
   uint32_t startTime;
   uint8_t tickCount = 0;
-  bool active = false;
+  bool active = true;
 
 public:
   SparkleEffect(uint8_t id)
     : Effect(id) {
     Serial.println("Init Sparkle Effect");
     startTime = millis();
+    active = true;
     for (uint8_t i = 0; i < SPARKLE_COUNT; i++) {
       sparkles[i].alive = false;
     }
@@ -38,7 +38,6 @@ public:
   }
 
   void update() override {
-
     // When time is up, start fading the effect
     if (millis() - startTime > SPARKLE_DURATION_MS) {
       active = false;

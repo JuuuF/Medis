@@ -25,12 +25,12 @@ struct EffectEntry {
 
 // Selection Table Pool
 const EffectEntry effects[] = {
-  { 0, 5 },  // SparkleEffect
-  { 1, 2 },  // OutlineEffect
-  { 2, 4 },  // EmberEffect
-  { 3, 2 },  // RebirthEffect
-  { 4, 2 },  // FeatherCascadeEffect
-  { 5, 1 },  // PrideCascadeEffect
+  { 1, 5 },  // SparkleEffect
+  { 2, 2 },  // OutlineEffect
+  { 3, 4 },  // EmberEffect
+  { 4, 2 },  // RebirthEffect
+  { 5, 2 },  // FeatherCascadeEffect
+  { 6, 1 },  // PrideCascadeEffect
   { 7, 1 },  // CelestialAscensionEffect
   { 8, 3 },  // FawkesWeepsEffect
   { 9, 2 }   // SacredBreathEffect
@@ -40,12 +40,12 @@ const EffectEntry effects[] = {
 
 Effect* createEffectByID(uint8_t id) {
   switch (id) {
-    case 0: return new SparkleEffect(id);
-    case 1: return new OutlineEffect(id);
-    case 2: return new EmberEffect(id);
-    case 3: return new RebirthEffect(id);
-    case 4: return new FeatherCascadeEffect(id);
-    case 5: return new PrideCascadeEffect(id);
+    case 1: return new SparkleEffect(id);
+    case 2: return new OutlineEffect(id);
+    case 3: return new EmberEffect(id);
+    case 4: return new RebirthEffect(id);
+    case 5: return new FeatherCascadeEffect(id);
+    case 6: return new PrideCascadeEffect(id);
     case 7: return new CelestialAscensionEffect(id);
     case 8: return new FawkesWeepsEffect(id);
     case 9: return new SacredBreathEffect(id);
@@ -80,25 +80,31 @@ Effect* pickEffect() {
 }
 
 void maybeSpawnEffect() {
+  // Don't choose an effect if interval is 0
   if (EFFECT_INTERVAL_S == 0) return;
+
+  // Wait for current effect to finish
   if (activeEffect != nullptr) return;
 
+#ifdef DEBUG
+  // --- DEBUG MODE: Sequential Cycle ---
+  static size_t dbgIdx = 0;
+  uint8_t targetID = effects[dbgIdx % EFFECT_COUNT].effectID;
+  dbgIdx++;
+
+  Serial.print("[DEBUG] Next sequential effect triggered. ID: ");
+  Serial.println(targetID);
+
+  activeEffect = createEffectByID(targetID);
+
+#else
+  // --- PRODUCTION MODE: Weighted Random Spawn with Timing Delay ---
   static uint32_t nextSpawn = 0;
   if (millis() < nextSpawn) return;
 
   uint32_t avgMs = (uint32_t)EFFECT_INTERVAL_S * 1000UL;
   nextSpawn = millis() + random(avgMs / 2, avgMs * 3 / 2);
+
   activeEffect = pickEffect();
-
-#ifdef DEBUG
-  /** Sequential Cycle Tool */
-  static size_t dbgIdx = 0;
-  nextSpawn = millis() + 3000UL;
-
-  uint8_t targetID = effects[dbgIdx % EFFECT_COUNT].effectID;
-  dbgIdx++;
-
-  delete activeEffect;
-  activeEffect = createEffectByID(targetID);
 #endif
 }
