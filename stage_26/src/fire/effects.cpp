@@ -8,6 +8,7 @@
 #include "effect_pride.h"
 #include "effect_ascension.h"
 #include "effect_fawksweeps.h"
+#include "effect_breath.h"
 
 Effect* getEffect(uint8_t effectID) {
   switch (effectID) {
@@ -19,6 +20,7 @@ Effect* getEffect(uint8_t effectID) {
     case 6: return new PrideCascadeSlaveEffect();
     case 7: return new CelestialAscensionSlaveEffect();
     case 8: return new FawkesWeepsSlaveEffect();
+    case 9: return new SacredBreathSlaveEffect();
   }
 
   return nullptr;
