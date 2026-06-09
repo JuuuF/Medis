@@ -12,6 +12,7 @@
 #include "effect_pride.h"
 #include "effect_ascension.h"
 #include "effect_fawkesweeps.h"
+#include "effect_breath.h"
 
 #include <FastLED.h>
 
@@ -24,14 +25,15 @@ struct EffectEntry {
 
 // Selection Table Pool
 const EffectEntry effects[] = {
-  { 0, 5 },    // SparkleEffect
-  { 1, 2 },    // OutlineEffect
-  { 2, 4 },    // EmberEffect
-  { 3, 2 },    // RebirthEffect
-  { 4, 2 },    // FeatherCascadeEffect
-  { 5, 1 },    // PrideCascadeEffect
-  { 7, 1 },    // CelestialAscensionEffect
-  { 8, 3 },    // FawkesWeepsEffect
+  { 0, 5 },  // SparkleEffect
+  { 1, 2 },  // OutlineEffect
+  { 2, 4 },  // EmberEffect
+  { 3, 2 },  // RebirthEffect
+  { 4, 2 },  // FeatherCascadeEffect
+  { 5, 1 },  // PrideCascadeEffect
+  { 7, 1 },  // CelestialAscensionEffect
+  { 8, 3 },  // FawkesWeepsEffect
+  { 9, 2 }   // SacredBreathEffect
 };
 
 #define EFFECT_COUNT (sizeof(effects) / sizeof(effects[0]))
@@ -46,6 +48,7 @@ Effect* createEffectByID(uint8_t id) {
     case 5: return new PrideCascadeEffect(id);
     case 7: return new CelestialAscensionEffect(id);
     case 8: return new FawkesWeepsEffect(id);
+    case 9: return new SacredBreathEffect(id);
 
     default:
       // Safe fallback mechanism if an invalid ID enters the framework
