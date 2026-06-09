@@ -30,6 +30,7 @@ public:
 
   FeatherCascadeSlaveEffect()
     : Effect(5) {
+    Serial.println("Init Feather Effect");
     effectStart = millis();
 
     uint32_t maxDelayFound = 0;

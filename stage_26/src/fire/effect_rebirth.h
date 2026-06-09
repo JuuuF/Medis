@@ -38,6 +38,7 @@ public:
 
   RebirthSlaveEffect()
     : Effect(4) {
+    Serial.println("Init Rebirth Effect");
     phaseStart = millis();
     phase = RS_COLLAPSE;
     memset(waveFront, 0, sizeof(waveFront));

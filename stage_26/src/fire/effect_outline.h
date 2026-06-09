@@ -53,6 +53,7 @@ private:
 public:
   OutlineEffect()
     : Effect(2) {
+    Serial.println("Init Outline Effect");
     Serial.println("Outline effect");
     startTime = millis();
 

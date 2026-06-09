@@ -28,6 +28,7 @@ public:
 
   PrideCascadeSlaveEffect()
     : Effect(6) {
+    Serial.println("Init Pride Effect");
     phase = PRIDE_CYCLING;
     phaseStart = millis();
     done = false;

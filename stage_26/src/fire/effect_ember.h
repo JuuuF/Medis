@@ -27,7 +27,7 @@ public:
 
   EmberEffectSlave()
     : Effect(3), globalTick(0) {
-    Serial.println("Simple burst response start.");
+    Serial.println("Init Ember Effect.");
     for (uint8_t s = 0; s < EMBER_NUM_STRIPS; s++) {
       frontPos[s] = 0;
       stepTick[s] = 0;

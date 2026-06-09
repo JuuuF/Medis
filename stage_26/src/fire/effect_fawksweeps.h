@@ -45,6 +45,7 @@ public:
 
   FawkesWeepsSlaveEffect()
     : Effect(8) {
+    Serial.println("Init Fawke Sweep Effect");
     phaseStart = millis();
     phase = FWS_STREAKING;
 

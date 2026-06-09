@@ -65,6 +65,7 @@ public:
 
   CelestialAscensionSlaveEffect()
     : Effect(7) {
+    Serial.println("Init Ascension Effect");
     phaseStart = millis();
     phase = CAS_PROPAGATING;
 

@@ -31,6 +31,7 @@ private:
 public:
   SparkleEffect()
     : Effect(1) {
+    Serial.println("Init Sparkle Effect");
     uint32_t now = millis();
     for (uint8_t s = 0; s < 4; s++) {
       startTimes[s] = now;
