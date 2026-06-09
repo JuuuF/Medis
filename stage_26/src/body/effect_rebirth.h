@@ -71,6 +71,7 @@ public:
     emberPulseBrightness = 20;
     emberPulseRising = false;
     memset(ripples, 0, sizeof(ripples));
+    broadcastEffect(effectID);
   }
 
   void update() override {
@@ -106,7 +107,6 @@ public:
           phase = RP_IGNITION;
           phaseStart = now;
           // Tell slaves the rebirth is happening NOW
-          broadcastEffect(effectID);
         }
         break;
 
@@ -152,7 +152,7 @@ public:
 
           // Increase red dominance, sap green & blue as fire weakens
           uint8_t greenSup = lerp8by8(0, 160, t);
-          uint8_t dimMul = lerp8by8(255, 30, t);  // overall dim toward end
+          uint8_t dimMul = lerp8by8(255, 0, t);  // overall dim toward end
 
           uint8_t centerX = MATRIX_WIDTH / 2;
           uint8_t centerY = MATRIX_HEIGHT / 2;
