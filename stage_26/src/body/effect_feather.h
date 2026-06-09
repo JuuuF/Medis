@@ -119,32 +119,32 @@ public:
                             (uint8_t)((uint32_t)elapsed * 255 / FC_FADE_MS));
     }
 
+    // ── 0. Calculate Outline Brightness & Suppress Background ─────────────────
+    uint8_t outlineBright = 0;
+
+    if (phase == FC_GLOWING) {
+      outlineBright = (uint8_t)((uint32_t)elapsed * FC_OUTLINE_BRIGHTNESS / FC_GLOW_MS);
+    } else if (phase == FC_HOLDING || phase == FC_PULSING) {
+      outlineBright = FC_OUTLINE_BRIGHTNESS;
+    } else if (phase == FC_FADING) {
+      outlineBright = scale8(FC_OUTLINE_BRIGHTNESS, layerAlpha);
+    }
+
+    // CRITICAL FIX: Only suppress the background fire effect during the intro/hold/pulse stages.
+    // If we are in FC_FADING, stop eating the background so the active graphics can fade out cleanly.
+    if (outlineBright > 0 && phase != FC_FADING) {
+      uint8_t fireRetentionFactor = 255 - outlineBright;
+      for (uint16_t i = 0; i < (MATRIX_WIDTH * MATRIX_HEIGHT); i++) {
+        leds[i].nscale8_video(fireRetentionFactor);
+      }
+    }
+
     // ── 1. Body outline glow ─────────────────
-    {
-      uint8_t outlineBright = 0;
-
-      if (phase == FC_GLOWING) {
-        // Fade in
-        outlineBright = (uint8_t)((uint32_t)elapsed * FC_OUTLINE_BRIGHTNESS / FC_GLOW_MS);
-      } else if (phase == FC_HOLDING || phase == FC_PULSING) {
-        outlineBright = FC_OUTLINE_BRIGHTNESS;
-      } else if (phase == FC_FADING) {
-        outlineBright = scale8(FC_OUTLINE_BRIGHTNESS, layerAlpha);
-      }
-
-      if (outlineBright > 0) {
-        CHSV hsv(FC_OUTLINE_HUE, FC_OUTLINE_SAT, outlineBright);
-        CRGB col;
-        hsv2rgb_rainbow(hsv, col);
-
-        uint8_t fireRetentionFactor = 255 - outlineBright;
-        // nscale8_video prevents flickering/kill-downs on low-level LEDs
-        for (uint16_t i = 0; i < (MATRIX_WIDTH * MATRIX_HEIGHT); i++) {
-          leds[i].nscale8_video(fireRetentionFactor);
-        }
-
-        _drawOutline(leds, col);
-      }
+    if (outlineBright > 0) {
+      CHSV hsv(FC_OUTLINE_HUE, FC_OUTLINE_SAT, outlineBright);
+      CRGB col;
+      hsv2rgb_rainbow(hsv, col);
+      _drawOutline(leds, col);
     }
 
     // ── 2. Torso pulses ──────────────────────

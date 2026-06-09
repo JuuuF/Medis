@@ -57,10 +57,13 @@ void maybeSpawnEffect() {
 
   activeEffect = pickEffect();
 
-  // return;
+#ifdef DEBUG
+  return;
 
   /** Effect cycling override */
   static size_t dbgIdx = 0;
   nextSpawn = millis() + 3000UL;  // Fast 3-second cycle window
   activeEffect = effects[dbgIdx++ % (sizeof(effects) / sizeof(effects[0]))].create();
+#endif
+
 }
