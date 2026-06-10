@@ -10,6 +10,7 @@
 #include "effect_fawksweeps.h"
 #include "effect_breath.h"
 #include "effect_fireblessing.h"
+#include "effect_wings.h"
 
 Effect* getEffect(uint8_t effectID) {
   switch (effectID) {
@@ -23,6 +24,8 @@ Effect* getEffect(uint8_t effectID) {
     case 8: return new FawkesWeepsSlaveEffect();
     case 9: return new SacredBreathSlaveEffect();
     case 10: return new FireBlessingSlaveEffect();
+    // case 11: no response for AethericPrismEffect
+    case 12: return new WingsFollowerEffect();
   }
 
   return nullptr;
