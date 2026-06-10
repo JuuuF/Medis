@@ -14,6 +14,7 @@
 #include "effect_fawkesweeps.h"
 #include "effect_breath.h"
 #include "effect_fireblessing.h"
+#include "effect_aether.h"
 
 #include <FastLED.h>
 
@@ -36,6 +37,7 @@ const EffectEntry effects[] = {
   { 8, 3 },   // FawkesWeepsEffect
   { 9, 2 },   // SacredBreathEffect
   { 10, 2 },  // FireBlessing
+  { 11, 2 },  // AethericPrismEffect
 };
 
 #define EFFECT_COUNT (sizeof(effects) / sizeof(effects[0]))
@@ -52,6 +54,7 @@ Effect* createEffectByID(uint8_t id) {
     case 8: return new FawkesWeepsEffect(id);
     case 9: return new SacredBreathEffect(id);
     case 10: return new FireBlessingEffect(id);
+    case 11: return new AethericPrismEffect(id);
 
     default:
       // Safe fallback mechanism if an invalid ID enters the framework
