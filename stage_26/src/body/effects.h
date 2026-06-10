@@ -9,7 +9,7 @@
 // average seconds between effects
 #define EFFECT_INTERVAL_S 2
 #else
-#define EFFECT_INTERVAL_S 60
+#define EFFECT_INTERVAL_S 120
 #endif
 
 // ----------------------------------------------
