@@ -11,10 +11,6 @@
 
 CRGB leds[NUM_LEDS];
 
-// #ifndef DEBUG
-// CRGB leds_eye[EYE_LEDS];
-// #endif
-
 Effect *activeEffect = nullptr;
 
 // -----------------------------------------------------------------------
@@ -25,12 +21,6 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   fill_solid(leds, NUM_LEDS, CRGB::Black);
-
-// #ifndef DEBUG
-  // pinMode(EYE_PIN, OUTPUT);
-  // FastLED.addLeds<CHIPSET, EYE_PIN, COLOR_ORDER>(leds_eye, EYE_LEDS);
-  // fill_solid(leds_eye, EYE_LEDS, CRGB::Black);
-// #endif
 
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setDither(DISABLE_DITHER);
@@ -72,11 +62,7 @@ void loop() {
 
     maybeSpawnEffect();
 
-// #ifdef DEBUG
     renderIndependentEye(leds);
-// #else
-    // renderIndependentEye(leds_eye);
-// #endif
 
     FastLED.show();
   }
