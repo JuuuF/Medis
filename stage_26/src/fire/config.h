@@ -10,7 +10,7 @@
 #define LED_PIN_3 9
 #define LED_PIN_4 12
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define COLOR_ORDER GRB
