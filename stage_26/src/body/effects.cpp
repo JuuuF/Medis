@@ -89,21 +89,26 @@ void maybeSpawnEffect() {
   // Wait for current effect to finish
   if (activeEffect != nullptr) return;
 
+  static uint32_t nextSpawn = 0;
+  if (millis() < nextSpawn) return;
+
 #ifdef DEBUG
   // --- DEBUG MODE: Sequential Cycle ---
   static size_t dbgIdx = 0;
+
+  // dbgIdx += random(100);
+
   uint8_t targetID = effects[dbgIdx % EFFECT_COUNT].effectID;
   dbgIdx++;
 
   Serial.print("[DEBUG] Next sequential effect triggered. ID: ");
   Serial.println(targetID);
 
+  nextSpawn = millis() + (uint32_t)EFFECT_INTERVAL_S * 1000UL;
   activeEffect = createEffectByID(targetID);
 
 #else
   // --- PRODUCTION MODE: Weighted Random Spawn with Timing Delay ---
-  static uint32_t nextSpawn = 0;
-  if (millis() < nextSpawn) return;
 
   uint32_t avgMs = (uint32_t)EFFECT_INTERVAL_S * 1000UL;
   nextSpawn = millis() + random(avgMs / 2, avgMs * 3 / 2);
