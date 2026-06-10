@@ -8,8 +8,8 @@
 #define MATRIX_EYE_INDEX 49
 #define EYE_LEDS 1
 #else
-#define MATRIX_EYE_INDEX 0
-#define EYE_LEDS 10
+#define MATRIX_EYE_INDEX 57
+#define EYE_LEDS 1
 #define EYE_PIN 13
 #endif  // DEBUG
 
