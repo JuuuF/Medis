@@ -1,0 +1,530 @@
+You are an expert embedded systems developer specializing in optimized LED animation frameworks (specifically the FastLED library on Arduino/ESP platforms).
+
+I am going to give you a description of a new synchronized visual effect. Your task is to generate two distinct, highly optimized C++ header classes: a Leader Effect (running on a 2D Matrix display) and a Follower Effect (running on a network-linked device driving 4 independent linear LED strips).
+
+## Operational Environment Context
+
+- Timing: The main execution loop updates frames strictly inside an EVERY_N_MILLISECONDS(8) interval (125 FPS framework).
+- Matrix Structure: The Leader matrix scales based on build environment flags (DEBUG active: $6 \times 24$, normal: $7 \times 28$). It is split vertically into a torso layout section (FLAME_HEIGHT = MATRIX_HEIGHT - HEAD_LEDS) and an upper head region (HEAD_LEDS = 5).
+- Background Interactions: Native noise fire processes populate raw values into leds[NUM_LEDS] before the effect execution layer runs. Your draw() implementations can manipulate, selectively scale/suppress via nscale8_video(), or apply additive layers (+= or qadd8()) directly over these pre-rendered flame pixels.
+
+## Core Architectural Rules
+
+- Inheritance & State Management: Classes must derive from Effect and use explicit, protected constructor forwarding explicit Effect(uint8_t id). They must implement update() and draw(). Setting done = true instantly cleans up and terminates the runtime sequence.
+- Deterministic Layout Math: Use the XY(col, row) layout wrapper mapping function for Leader pixel calculations. Do not call hardware rendering commands like FastLED.show() or modify global interrupt states inside an effect scope.
+- Optimized Bitwise Math: Avoid dynamic allocation, object copies, and floating-point logic. Rely entirely on fixed-point numbers ($256$ scaled variants such as uint16_t positionalFP), bit-shifting operations (>> 1), and fast hardware math primitives (scale8(), qadd8(), lerp8by8()).
+- Network Handshake Execution: Trigger follower operations precisely at your chosen transition window by invoking broadcastEffect(effectID) via the hardware communication layer.
+
+## Leader boilerplate:
+#pragma once
+
+#include "config.h"
+#include "effects.h"
+#include "mapping.h"
+#include "communication.h"
+#include <FastLED.h>
+
+// ─────────────────────────────────────────────
+// Hardcoded Timers & Intensity Presets
+#define NEW_FX_INTRO_MS   2000
+#define NEW_FX_PEAK_MS    1000
+#define NEW_FX_DECAY_MS   1500
+
+enum NewFXPhase : uint8_t {
+  NFX_INTRO = 0,
+  NFX_PEAK,
+  NFX_DECAY,
+  NFX_DONE
+};
+
+// ═════════════════════════════════════════════
+// MASTER EFFECT CLASS
+// ═════════════════════════════════════════════
+class NewCascadeEffect : public Effect {
+public:
+  NewFXPhase phase;
+  uint32_t phaseStart;
+  uint8_t globalAlpha;
+
+  NewCascadeEffect(uint8_t id) : Effect(id) {
+    Serial.println("Init NewCascadeEffect");
+    phaseStart = millis();
+    phase = NFX_INTRO;
+    globalAlpha = 255;
+    
+    // Call immediately upon execution, or defer to a transition boundary inside update()
+    broadcastEffect(effectID); 
+  }
+
+  void update() override {
+    uint32_t now = millis();
+    uint32_t elapsed = now - phaseStart;
+
+    switch (phase) {
+      case NFX_INTRO:
+        if (elapsed >= NEW_FX_INTRO_MS) {
+          phase = NFX_PEAK;
+          phaseStart = now;
+        }
+        break;
+
+      case NFX_PEAK:
+        if (elapsed >= NEW_FX_PEAK_MS) {
+          phase = NFX_DECAY;
+          phaseStart = now;
+        }
+        break;
+
+      case NFX_DECAY:
+        // Use lerp for fast structural fading calculations
+        globalAlpha = lerp8by8(255, 0, (uint8_t)(elapsed * 255 / NEW_FX_DECAY_MS));
+        if (elapsed >= NEW_FX_DECAY_MS) {
+          phase = NFX_DONE;
+          done = true;
+        }
+        break;
+    }
+  }
+
+  void draw(CRGB* leds) override {
+    uint32_t elapsed = millis() - phaseStart;
+    
+    // Note: The lower torso body boundaries map to (0 to FLAME_HEIGHT - 1).
+    // The separate upper head region boundaries map to (FLAME_HEIGHT to MATRIX_HEIGHT - 1).
+
+    switch (phase) {
+      case NFX_INTRO: {
+        // Manipulate background layers using clean scale multipliers, e.g.:
+        // leds[XY(x, y)].nscale8_video(fireRetentionFactor);
+        break;
+      }
+      case NFX_PEAK: {
+        // Render bright, saturated, or mathematical overlays
+        break;
+      }
+      case NFX_DECAY: {
+        // Smoothly bring element profiles back down to zero using globalAlpha
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+private:
+  void _blend(CRGB* leds, int8_t x, int8_t y, CRGB col) {
+    if (x < 0 || x >= MATRIX_WIDTH || y < 0 || y >= MATRIX_HEIGHT) return;
+    uint16_t idx = XY(x, y);
+    leds[idx].r = qadd8(leds[idx].r, col.r);
+    leds[idx].g = qadd8(leds[idx].g, col.g);
+    leds[idx].b = qadd8(leds[idx].b, col.b);
+  }
+};
+
+
+## Follower boilerplate:
+
+#pragma once
+
+#include "config.h"
+#include "effects.h"
+#include "communication.h"
+#include <FastLED.h>
+
+// ─────────────────────────────────────────────
+// Hardware Spatial Configurations & Structural Rules
+#define SLAVE_WAVE_MS        800
+#define SLAVE_SETTLE_MS      1500
+#define SLAVE_TAIL_DELAY_MS  150  // Asynchronous channel lag factor
+#define SLAVE_STRIP_COUNT    4
+#define SLAVE_STRIP_LEN      40   // Hard structural boundary line per channel
+
+enum NewFXSlavePhase : uint8_t {
+  NFXS_PROPAGATING = 0,
+  NFXS_SETTLE,
+  NFXS_DONE
+};
+
+// ═════════════════════════════════════════════
+// SLAVE EFFECT CLASS
+// ═════════════════════════════════════════════
+class NewCascadeSlaveEffect : public Effect {
+public:
+  uint32_t phaseStart;
+  NewFXSlavePhase phase;
+
+  NewCascadeSlaveEffect() : Effect(/*MATCHING_LEADER_ID*/) {
+    phaseStart = millis();
+    phase = NFXS_PROPAGATING;
+  }
+
+  void update() override {
+    uint32_t now = millis();
+    uint32_t elapsed = now - phaseStart;
+
+    switch (phase) {
+      case NFXS_PROPAGATING:
+        if (elapsed >= (SLAVE_WAVE_MS + SLAVE_TAIL_DELAY_MS)) {
+          phase = NFXS_SETTLE;
+          phaseStart = now;
+        }
+        break;
+
+      case NFXS_SETTLE:
+        if (elapsed >= SLAVE_SETTLE_MS) {
+          phase = NFXS_DONE;
+          done = true;
+        }
+        break;
+    }
+  }
+
+  void draw(CRGB* leds_1, CRGB* leds_2, CRGB* leds_3, CRGB* leds_4) override {
+    uint32_t elapsed = millis() - phaseStart;
+    CRGB* stripPtrs[SLAVE_STRIP_COUNT] = { leds_1, leds_2, leds_3, leds_4 };
+
+    // ── Propagating Signal Wave ──
+    if (phase == NFXS_PROPAGATING) {
+      for (uint8_t s = 0; s < SLAVE_STRIP_COUNT; s++) {
+        // Apply asymmetrical staggering logic (e.g., strips 2 & 3 wait for lag window)
+        uint32_t delay = (s >= 2) ? SLAVE_TAIL_DELAY_MS : 0;
+        if (elapsed < delay) continue;
+
+        uint32_t activeTime = elapsed - delay;
+        
+        // Map positional markers safely to your physical hardware space via integer math
+        uint16_t currentPos = (activeTime * SLAVE_STRIP_LEN) / SLAVE_WAVE_MS;
+        if (currentPos >= SLAVE_STRIP_LEN) currentPos = SLAVE_STRIP_LEN - 1;
+
+        CRGB* strip = stripPtrs[s];
+
+        // RENDER STEP: Drive the anti-aliased trailing impulse front down the target strip
+        // Keep bounds operations safely protected (e.g., currentPos - tailIndex >= 0)
+      }
+    }
+    // ── Settle Glow & Cool-down ──
+    else if (phase == NFXS_SETTLE) {
+      uint8_t factor = (elapsed * 255) / SLAVE_SETTLE_MS;
+      uint8_t coolDownGlow = scale8(64, 255 - factor);
+
+      if (coolDownGlow == 0) return;
+
+      for (uint8_t s = 0; s < SLAVE_STRIP_COUNT; s++) {
+        CRGB* strip = stripPtrs[s];
+        for (uint8_t p = 0; p < SLAVE_STRIP_LEN; p++) {
+          // Perform ultra-fast shifts and safe saturation addition over pre-existing colors
+          strip[p].r = qadd8(strip[p].r, coolDownGlow);
+          strip[p].g = qadd8(strip[p].g, coolDownGlow >> 1); // Zero-cost bitwise division
+        }
+      }
+    }
+  }
+};
+
+
+## Prior effect descriptions{
+    "effects": [
+        {
+            "effect_name": "Synchronized Sparkle Effect (Leader/Follower Architecture)",
+            "purpose": "Creates a temporary, additive white sparkle layer over an existing background (e.g., a flame effect).",
+            "system_trigger": "The Leader broadcasts the effect ID upon instantiation. The Follower listens for this broadcast to trigger its own staggered sequence.",
+            "shared_mechanics": {
+                "fade_type": "Additive white blend (CRGB values add to existing color block without replacing it).",
+                "individual_sparkle_behavior": "Spawns at max brightness, decays progressively by a fixed value per tick, and flags itself as dead once brightness drops below the decay threshold.",
+                "lifecycle_management": "Effects remain active for a fixed duration. Once the duration expires, new spawns halt, but the class remains alive until all active sparkles completely fade out (flagging 'done = true')."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (uses X, Y coordinates and an XY mapping function).",
+                "constants": {
+                    "duration_ms": 2500,
+                    "max_simultaneous_sparkles": 10,
+                    "decay_rate": 40,
+                    "spawn_frequency": "Every 3 ticks (if an open slot is available)"
+                },
+                "spawn_behavior": "Randomly spreads across MATRIX_WIDTH and MATRIX_HEIGHT at initial brightness 255."
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (manages 4 distinct LED strips simultaneously using a single dimension coordinate index).",
+                "constants": {
+                    "duration_ms": 2500,
+                    "delay_ms": 1000,
+                    "max_sparkles_per_strip": 2,
+                    "decay_rate": 40,
+                    "spawn_frequency": "Every 3 ticks per strip (offset initially by a random tick alignment)"
+                },
+                "stagger_mechanics": "Upon initialization, it waits for a 1000ms delay window before activating any sparkle logic on the strips.",
+                "spawn_behavior": "Randomly spreads across NUM_LEDS at a slightly dimmer initial brightness of 150.",
+                "draw_signature": "Overrides draw to accept 4 separate CRGB strip pointers, rendering independently via an array pointer loop."
+            }
+        },
+        {
+            "effect_name": "Symmetric Outline Contour & Energy Release (Leader/Follower Architecture)",
+            "purpose": "Traces a magenta/purple structural silhouette across a 2D matrix before building up energy to discharge a high-velocity, anti-aliased trailing light impulse down external LED strips.",
+            "system_trigger": "The Leader builds up and holds structural energy until a sharp 'BEAT' discharge phase is entered. At the peak of this release, it fires `broadcastEffect(effectID)` to instantly deploy the structural Follower snakes.",
+            "shared_mechanics": {
+                "color_profile": "Magenta/Purple core signature (R=180, G=80, B=255).",
+                "fade_type": "Additive brightness and blending mechanics scaling based on fractional pixel values and structural state changes.",
+                "lifecycle_management": "The leader relies on sequential time-based milestones across four distinct operational phases. The follower monitors absolute position coverage, remaining alive until all linear traveling elements have completely exited the boundaries of the strips."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Spatially divided into symmetrical sections: Neck, Body Sides, Body Bottom, Head Sides, and Head Top).",
+                "phases": {
+                    "TRAVEL": "4,000ms. A 4-pixel anti-aliased snake crawls out from the matrix center, tracing and leaving behind a low-intensity background contour path.",
+                    "HEAD_CHARGE": "2,000ms. The body contour remains locked while the upper head rows pulse heavily using an accelerating exponential brightness curve.",
+                    "BEAT": "750ms. High-intensity flash spanning the entire matrix outline. Transmits the trigger command to slave devices on tick zero before dropping in structural intensity.",
+                    "DECAY": "1,500ms. Symmetrically structural element values cool down back to zero before self-terminating."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Drives 4 separate independent structural output lines simultaneously).",
+                "speed_generation": "Utilizes a custom squared-distribution curve function (`getSkewedSpeed`) ensuring heavy, non-linear velocity variance per strip (ranging from 100 to 800 fixed-point speed values).",
+                "propagation_mechanics": "Projects a highly optimized 6-pixel anti-aliased 'snake' down each strip from start to finish. Incorporates an edge fade zone calculation (`OUTLINE_FADE_ZONE = 10`) ensuring elements naturally dim down smoothly rather than popping off abruptly as they approach the end bounds of the line."
+            }
+        },
+        {
+            "effect_name": "Ember Burst and Propagation Wave (Leader/Follower Architecture)",
+            "purpose": "Simulates a massive, multi-phase thermal build-up. An 'inhale' phase compresses existing background fire into deep red cores, followed by an overexposed explosion of matrix sparks that releases a high-velocity traveling shockwave across external LED strips.",
+            "system_trigger": "The Leader shifts from a static hold to a violent burst. At this exact transition point, it broadcasts its effect ID, instantly deploying the Follower state machine.",
+            "shared_mechanics": {
+                "fade_type": "Combination of color-suppression scaling (during charge) and high-brightness additive saturation blending (during burst/wave).",
+                "lifecycle_management": "The leader controls 5 distinct timing phases sequentially. The follower acts independently as a dynamic tracking engine, maintaining its lifecycle based on linear wave completeness across 4 independent strips before marking itself done."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (uses raw X/Y translation matrices to project coordinates directly onto a layout).",
+                "phases": {
+                    "EP_CHARGE": "10,000ms. Drops ambient brightness down to 20/255. Desaturates the green channel to turn background fire deep crimson, bleeding in faint blue accents near completion to mimic intense convective heat.",
+                    "EP_HOLD": "100ms. Sustains the dense, compressed deep-red state at its thermal peak.",
+                    "EP_BURST": "350ms. Triggers a golden-white overexposure flash across the entire matrix while spawning 20 randomized, rapidly decaying matrix spark particles.",
+                    "EP_WAVE": "2,000ms. Returns the matrix to a normal, underlying fire profile while maintaining a lingering, slowly cooling warm blush.",
+                    "EP_ASH": "1,000ms. Normal operations resume; clears all visual modifiers before self-terminating."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (manages 4 independent strip pointers representing structural zones).",
+                "propagation_mechanics": "Pushes a high-velocity wave font from index 0 directly to the tip of each strip. Strips 0 and 1 (wings) initialize wave travel immediately, while strips 2 and 3 (tails) stagger behind by an intentional delay.",
+                "wave_front_rendering": {
+                    "leading_tip": "Index [front]. Additive warm-white accent layer to punch aggressively through existing base colors.",
+                    "trailing_pixel_1": "Index [front - 1]. Shifting to bright, vibrant gold.",
+                    "trailing_pixel_2": "Index [front - 2]. Cooling down into a deep amber.",
+                    "trailing_pixel_3": "Index [front - 3]. Fading away as a faint, low-intensity red ember tail."
+                }
+            }
+        },
+        {
+            "effect_name": "Phoenix Rebirth & Ignition Shockwave (Leader/Follower Architecture)",
+            "purpose": "Simulates a dramatic theatrical snuffing sequence where an active fire background collapses inward to a dead, breathing ember core before violently detonating in a white-hot flash that propagates outward as an explosive wave down external strips.",
+            "system_trigger": "The Leader controls the timeline broadcast. Uniquely, it initiates the system handshake by firing `broadcastEffect(effectID)` immediately upon instantiation (`RP_COLLAPSE`), forcing the Follower to mirror its long, synchronized wind-up phases.",
+            "shared_mechanics": {
+                "color_profile": "Dynamic transition from deep, desaturated red (collapse/ember) to pure white-hot overexposure (ignition/wave front), settling into a warm golden recovery bloom.",
+                "fade_type": "Combines intensive background channel manipulation (sapping green/blue to force a deep red shift before hard overwriting to pure black) with high-intensity additive pixel injection.",
+                "lifecycle_management": "The leader executes a 5-phase timing array spanning exactly 25.15 seconds. The follower tracks structural state completions over 4 linear phases, matching the exact milestones of the master controller."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Spatially references absolute center column configurations to calculate inward-moving horizontal boundaries).",
+                "phases": {
+                    "RP_COLLAPSE": "15,000ms. Extinguishes matrix columns progressively from the outside edges inward toward a narrow live center zone (`REBIRTH_CORE_RADIUS = 2`), forcing remaining pixels into a dim, deep-crimson profile.",
+                    "RP_DEAD": "3,000ms. Forces all pixels outside the central core to pure black to smother ambient animations. The isolated center core executes a low-intensity triangular breathing pulse (10 to 55 brightness) using Manhattan distance falloffs.",
+                    "RP_IGNITION": "150ms. Discharges a violent, bell-curved pure white flash exploding outward from the matrix center coordinates.",
+                    "RP_EXPANSION": "2,000ms. Floods the matrix with an intense golden-fire additive layer while spawning 3 sequential concentric ripple rings that grow outward at staggered 300ms intervals.",
+                    "RP_RECOVERY": "5,000ms. Holds a lingering warm afterglow overlay that slowly decays to zero, cleanly returning system control to normal fire operations."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Drives 4 matching structural output lines bound to a hardcoded 40-pixel limit).",
+                "phases": {
+                    "RS_COLLAPSE": "15,000ms. Synchronously dims and strips the green/blue channels across all pixels on all 4 lines to match the leader's inward choke behavior.",
+                    "RS_DEAD": "3,000ms. Hard-clears every pixel across the entire strip length to pure black to cultivate complete audience suspense.",
+                    "RS_WAVE": "850ms total window (600ms wing travel + 250ms tail delay). Executes a rapid, lightweight integer-mapped front sweep. Strips 0 and 1 (wings) react instantly; strips 2 and 3 (tails) remain black for a 250ms lag window before firing. The traveling wave front renders a piercing white core with a sharp, five-pixel trailing thermal decay tail.",
+                    "RS_SETTLE": "2,000ms. Applies an optimized golden brush factor overlay using ultra-fast right-shift bitwise operations (`glow >> 1`) to blend a settling wash down the entire strip length as the animation cools."
+                }
+            }
+        },
+        {
+            "effect_name": "Feather Cascade Contour Glow & Torso Pulse (Leader/Follower Architecture)",
+            "purpose": "Creates a slow, majestic amber-gold outline around a 2D matrix that suppresses the underlying fire background, culminating in concentric expansion waves that erupt outward from the center and ripple asynchronously down separate linear LED strips.",
+            "system_trigger": "The Leader manages the localized timeline. Once its initial structural hold window closes, it transitions to the pulsing phase, fires `broadcastEffect(effectID)` on tick zero to release the remote slave sequences, and spawns concentric expansion rings.",
+            "shared_mechanics": {
+                "color_profile": "Warm amber-gold gradient profile (Outline Hue=30, Sat=180; Pulse/Feather Hue=28-32, Sat=200-220).",
+                "fade_type": "Combination of background scaling (destructive suppression of base fire colors up until the final decay window) and additive saturation blending for the active overlay paths.",
+                "lifecycle_management": "The leader relies entirely on a time-sliced master state-machine. The follower calculates a dynamic worst-case lifespan window at instantiation based on randomized offsets to ensure it remains active until the last delayed strip finishes its lifecycle."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Traces perimeter bounds for the outline; computes Manhattan distance from matrix center to form concentric rings).",
+                "phases": {
+                    "FC_GLOWING": "5,000ms. Symmetrically ramps up a 1-pixel-wide border along the matrix perimeter (top, bottom, left, and right columns) from 0 to 200 brightness, while progressively dimming the background fire.",
+                    "FC_HOLDING": "2,500ms. Locks the warm amber border at peak brightness while keeping background fire completely suppressed.",
+                    "FC_PULSING": "1,000ms. Spawns 3 simultaneous overlapping pulses at the matrix center (`cx`, `cy`). Rings expand outward smoothly via a 256-scaled fixed-point tracking variable (`radius16`) at randomized velocities, fading as they approach the diagonal boundaries.",
+                    "FC_FADING": "1,000ms. Smoothly lerps all remaining matrix graphics to zero alpha, removing background suppression rules so native animations can blend back in seamlessly."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Independently addresses 4 distinct structural output strips mapped to a hardcoded 40-pixel boundary limit).",
+                "asynchronous_staggering": "Assigns a completely random startup offset delay (`0 to 500ms`) individually to each of the 4 strips, causing waves to fire in an organic, decoupled cascade pattern.",
+                "propagation_mechanics": {
+                    "travel_phase": "800ms rise + 600ms hold. Sweeps a 5-pixel-wide (`FC_PULSE_WIDTH`) anti-aliased wave center index across the 40-pixel array length.",
+                    "decay_phase": "700ms fall. The wave locks at the end tip of the strip (index 39) and cleanly fades out to black using a linear interpolation step.",
+                    "attenuation": "Applies a positional gradient scaling factor (`tipFalloff`) that progressively tempers the peak intensity from full power at the root down to a dimmer 160/255 value as it approaches the physical tip of the line."
+                }
+            }
+        },
+        {
+            "effect_name": "Pride Flag Cascade & Dissolve (Leader/Follower Architecture)",
+            "purpose": "Drops a multi-colored pride flag curtain down a 2D matrix while suppressing background layers, which then triggers a synchronized rainbow wave cycling animation down secondary linear strips before dissolving into a localized white-hot sparkle decay.",
+            "system_trigger": "The Leader controls the curtain drops and holds. Once the static matrix flag has been established and held, it shifts to the cycling phase and fires `broadcastEffect(effectID)` to instantly prompt the Follower wave propagation.",
+            "shared_mechanics": {
+                "color_profile": "6-segment segmented color lookup gradient (Red, Orange, Green, Blue, Indigo, Violet). Indexed and mapped using custom modular arithmetic ranges (`index / 42`).",
+                "fade_type": "Combination of targeted region background suppression (`nscale8_video` acting exclusively on the torso region, bypassing the head) and additive color-blending configurations.",
+                "lifecycle_management": "The leader manages a 4-phase absolute timer sequence. The follower bypasses the initial reveal states entirely, initializing its loop straight into active runtime cycles upon receiving the network packet trigger."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Spatially processes the lower torso matrix boundaries: `MATRIX_HEIGHT - HEAD_LEDS`).",
+                "phases": {
+                    "PRIDE_REVEALING": "3,000ms. Drops a horizontal curtain line from neck down to tail. Below the line, native fire is scaled down by a suppression value of 240/255 and replaced by a static pride spectrum.",
+                    "PRIDE_HOLDING": "500ms. Locks the full flag illustration across the matrix, firing the broadcast signal at its completion boundary.",
+                    "PRIDE_CYCLING": "4,000ms. Holds the static matrix overlay stable while secondary modules execute their active cycles.",
+                    "PRIDE_SPARKLING": "2,500ms. Dissolves the flag layer. Generates pseudo-random coordinate seeding thresholds per pixel; passing a threshold triggers a quick 100ms flash to pure white, followed by a 500ms hot-pink/red decay loop that restores the background fire."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Addresses 4 independent linear output strips mapped to a 40-pixel bounds setting).",
+                "phases": {
+                    "PRIDE_CYCLING": "4,000ms. Instantly advances a rainbow wave down the line over 1,000ms (`INTRO_MS`), utilizing a 40-unit soft feathered attenuation gradient at the leading edge. Once fully deployed, the rainbow spectrum cycles down the length of the strips continuously for `PRIDE_CYCLES_WINGS = 3` total repetitions.",
+                    "PRIDE_SPARKLING": "2,500ms. Bypasses the discrete particle calculations used by the leader; instead, it executes a clean, uniform linear global fade tracker (`globalAlpha`) scaling the entire strip intensity down to zero."
+                }
+            }
+        },
+        {
+            "effect_name": "Celestial Ascension (Thermal Lift & Aerodynamic Surge)",
+            "purpose": "Simulates a massive, high-velocity finale sequence where intense thermal updrafts stretch the matrix fire vertically before unleashing repetitive, accelerating aerodynamic shockwaves out through the wing and tail strips.",
+            "system_trigger": "The Leader builds up an intense, bottom-sapping vertical tension profile before transitioning into repetitive upward matrix surges. At the exact boundary of the first full matrix surge, it broadcasts its effect ID to initiate the cascading, multi-velocity follower animation.",
+            "shared_mechanics": {
+                "color_profile": "Blinding thermal white-gold peaks fading down to raw high-saturation orange, shifting to deep convective reds at the physical roots.",
+                "fade_type": "Combination of aggressive bottom-up vertical desaturation scaling (to darken lower regions) and high-velocity additive velocity washes.",
+                "lifecycle_management": "The leader manages explicit stretch, hold, and repetitive surge cycles. The follower operates a rolling, multi-tiered timeline to accommodate complex independent strip length propagation and tail delays before self-terminating."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Spatially processes directional vertical translation over columns to simulate physical updraft columns).",
+                "phases": {
+                    "CA_THERMAL_STRETCH": "Progressively saps brightness and green channels from the lower matrix boundary while multiplying top-row vectors. Creates an upward-stretching gravity mask where intensity accelerates towards the head.",
+                    "CA_SURGE_CYCLE": "Triggers repetitive, overlapping full-matrix upward surges. Loops an exponential vertical offset translation, adding a blinding white-hot flash at the matrix crown on every cycle peak. Fires the system network broadcast on cycle zero."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Drives 4 multi-length structural lines; uniquely optimized for varying pixel counts per strip).",
+                "propagation_mechanics": {
+                    "wing_strips": "Strips 0 and 1. Execute instant, high-frequency repeated aerodynamic 'feather ripples'. Pulses accelerate rapidly using fixed-point velocity scaling as they track outward from wing root to tip.",
+                    "tail_strips": "Strips 2 and 3. Function as long, heavily delayed 'streamer' tails. They utilize distinct, layered velocities (Strip 2 moving slightly faster than Strip 3) to prevent synchronized paths, creating a trailing fluid-drag appearance.",
+                    "wave_front_rendering": "Renders high-intensity white-hot impulse heads followed by a long, multi-layered trailing heat gradient that cools down to deep charcoal red before completely clearing to background fire."
+                }
+            }
+        },
+        {
+            "effect_name": "Fawkes Weeps — Tears of Resurrection (Leader/Follower Architecture)",
+            "purpose": "Simulates a dramatic moment of phoenix mourning where the living fire collapses into cold blue-violet grief, luminous tears fall downward from the crown through the body, and the sculpture detonates in a white resurrection flash before fire roars back warmer and more violent than before.",
+            "system_trigger": "The Leader builds a cold grief desaturation mask descending from the crown over 5 seconds, then spawns sequential tear particles from the top of the head. It fires broadcastEffect(effectID) at the moment the first tear particle spawns, releasing the Follower's sympathetic weeping streaks.",
+            "shared_mechanics": {
+                "color_profile": "Cold blue-violet grief palette during suppression and streaking phases (R=160, G=200, B=255 core cooling to R=5, G=8, B=50 trail), transitioning to pure white-hot resurrection flash, then settling into a warm golden bloom (R=220, G=100) that purges all cold cast.",
+                "fade_type": "Combination of destructive cold-shift channel manipulation (green sapped, blue boosted) during grief phases, full-white additive radial detonation during flash, and warm additive golden bloom during recovery. All suppression is non-destructive so native fire returns cleanly.",
+                "lifecycle_management": "The leader manages 4 sequential time-sliced phases. The follower tracks per-strip streak completion across all 4 channels before transitioning to a decay bloom, then self-terminating."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix. Row y=0 is the physical floor (flame base). Row y=MATRIX_HEIGHT-1 is the crown (top of head). Torso occupies rows 0 to FLAME_HEIGHT-1; head occupies FLAME_HEIGHT to MATRIX_HEIGHT-1. Tears originate at the crown and fall toward y=0.",
+                "phases": {
+                    "FW_MOURN": "5,000ms. A cold wavefront descends from y=MATRIX_HEIGHT-1 toward y=0 as mournRamp builds 0 to 255. Suppression is spatially gated: coldRows = totalRows * mournRamp / 255 controls how many rows from the crown are infected. Within the zone, strength is strongest at the crown and tapers linearly to zero at the advancing wavefront edge. Green is heavily sapped (keepFactor=200/255), red is lightly sapped (keepFactor=210/255), and blue receives a +60 additive boost. The head rows additionally receive a growing faint blue-white glow to visually lead the grief downward.",
+                    "FW_TEARS": "4,000ms. Four tear particles stored in a fixed FWTear[4] pool spawn sequentially at the crown (y=MATRIX_HEIGHT-1) at 1,000ms intervals. Each tracks position in 64ths-of-a-pixel fixed-point (posFP), advancing by FW_TEAR_SPEED_FP >> 3 per 8ms tick. Physical row = (MATRIX_HEIGHT-1) - (posFP >> 6). Sub-pixel anti-aliasing: the departing pixel above the core receives alpha=255-frac; the core receives full 255. A 5-pixel cooling trail follows each core from bright blue-white (R=160, G=200, B=255) through cold violet (R=60, G=80, B=200) down to a barely visible thermal ghost (R=5, G=8, B=50). Tear columns are distributed evenly across MATRIX_WIDTH. The full grief lock (mournRamp=255) is re-applied as a flat suppression pass every frame. broadcastEffect(effectID) fires on the first tear spawn (tear 0). Phase transitions when all tears have landed AND FW_TEARS_MS has elapsed.",
+                    "FW_FLASH": "300ms. Radial white-hot detonation expanding outward from the matrix center (FW_FLASH_CX, FW_FLASH_CY). flashAlpha decays linearly 255 to 0. currentRad expands from 0 to MATRIX_WIDTH+MATRIX_HEIGHT using Manhattan distance (dx+dy, no sqrt). Pixel brightness = edgeFade * flashAlpha, producing a soft-perimeter shockwave that fades as it expands. All three channels receive equal additive white contribution.",
+                    "FW_BLOOM": "3,000ms. Warm golden additive overlay with bloomAlpha lerping 255 to 0 via lerp8by8. A vertical taper applies: vertFrac = 255*y/(MATRIX_HEIGHT-1) causes the crown and upper body to re-ignite visibly first, with the floor warming last (lerp8by8(80, 255, vertFrac)). Red channel peaks at 220, green at 100, no blue — the golden layer fully purges any residual cold violet cast and cleanly restores the native fire palette."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips. 4 independent strips of 40 pixels. Index 0 = root (attached to sculpture body). Index 39 = tip (outermost feather end). Streaks travel in reverse direction: tip to root (index 39 toward index 0), mirroring the downward fall of the leader tears.",
+                "phases": {
+                    "FWS_STREAKING": "Wings (strips 0 and 1) activate immediately on instantiation. Tails (strips 2 and 3) wait for a 400ms lag window before activating, creating an organic sympathetic cascade. Each streak tracks position in fixed-point 64ths-of-a-pixel (posFP=0 = head at tip index 39, posFP=(LEN-1)*64 = head at root index 0). Physical head index = (LEN-1) - (posFP >> 6). Speed constant FWS_STREAK_SPEED_FP=23 calibrated to cross 40 pixels in approximately 900ms. Sub-pixel anti-alias: head-1 receives frac alpha. Trail extends through head+1 to head+5 with the same cooling blue-violet gradient as the leader tears (R=100,G=130,B=255 at +1 cooling to R=5,G=8,B=50 at +5). Phase transitions when all 4 strips have completed their streak.",
+                    "FWS_BLOOM": "2,500ms. Warm golden additive settle wash decaying linearly. A root-to-tip positional attenuation applies: rootFrac = 255*(LEN-1-p)/(LEN-1) is 255 at index 0 and 0 at index 39. Local glow lerps between dim floor (80) and full brightness at the root, so resurrection warmth radiates visibly outward from the sculpture body. Red peaks at 200, green at 90, no blue. Phase terminates with done=true."
+                }
+            }
+        },
+        {
+            "effect_name": "Sacred Breath (Leader/Follower Architecture)",
+            "purpose": "Simulates a profound, cyclic breathing motion where the phoenix draws its existing fire inward, compressing its mass toward the core to become incredibly dense and white-hot, before releasing the pent-up energy outward through all four follower strips as a sweeping thermal pulse.",
+            "system_trigger": "The Leader enters a compression phase, instantly signaling the network. The Follower listens for this state, holding all strips dim or static while the body 'inhales', and then unleashes a high-velocity heat wave traveling root-to-tip the moment the Leader shifts into the 'Release' phase.",
+            "shared_mechanics": {
+                "color_profile": "Starts by shifting the native fire spectrum toward an ultra-intense, white-hot gold by aggressively scaling up red and green channels while suppressing blue (R++, G++, B--), transitioning into a pure white additive flash at peak release, and concluding with a warm, standard-fire thermal decay.",
+                "fade_type": "Spatial edge attenuation (`nscale8`) for structural compression, non-destructive additive color-channel overdrive for thermal saturation, and an explosive full-matrix additive overlay during the release shockwave.",
+                "lifecycle_management": "The leader orchestrates a 4-part timeline (Compress, Heat, Release, Fade). The follower synchronizes its linear strip execution directly to the Leader's phase transitions across all channels simultaneously, holding state during inhalation and executing a single-pass directional streak during exhalation before self-terminating."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix. Row y=0 is the physical flame base (floor). Row y=MATRIX_HEIGHT-1 is the crown (head). The matrix center coordinates (MATRIX_WIDTH/2, MATRIX_HEIGHT/2) act as the gravity well for the spatial collapse.",
+                "phases": {
+                    "SB_COMPRESS": "Phase 1. The existing living fire is spatially manipulated to collapse inward. Using a distance-from-center calculation, a `compressionFactor` is applied via `nscale8()` exclusively to pixels near the outer perimeter edges of the matrix. The center remains at full strength, visually mimicking a dense, high-gravity inward suction.",
+                    "SB_HEAT": "Phase 2. Golden heat saturation. As the breath reaches max depth, the compressed fire undergoes a gradual color shift toward white-hot gold. Red and green channels are continuously incremented while the blue channel is rapidly subtracted (R++, G++, B--), simulating an extreme rise in thermal density without adding new particles.",
+                    "SB_RELEASE": "Phase 3. The apex of the exhale. The compressed energy is suddenly liberated via a short, high-intensity additive flash across the entire matrix. This creates a blinding white shockwave that instantly purges the golden saturation and signals the Follower's synchronized strip release.",
+                    "SB_FADE": "Phase 4. The post-exhale normalization window. The additive white layer decays linearly back to zero, allowing the undisturbed, native background fire simulation to cleanly and seamlessly reclaim the entire matrix."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips. 4 identical structural lines of 40 pixels. Index 0 = root (attached to sculpture body). Index 39 = tip (outermost feather end). Thermal pulses travel in forward direction: root to tip (index 0 toward index 39), simulating heat pushed outward from the core.",
+                "propagation_mechanics": {
+                    "all_strips": "Strips 0, 1, 2, and 3. All four lines execute a unified, symmetrical behavioral cycle tied directly to the central body's respiration timeline.",
+                    "phases": {
+                        "SBS_IN_HOLD": "Synchronized perfectly with SB_COMPRESS and SB_HEAT. While the body is inhaling, all strips remain suppressed, static, or dim, emphasizing the visual narrative that all energy on the sculpture is being drawn out of the extremities and pulled into the core.",
+                        "SBS_EX_PULSE": "Triggers the exact millisecond the Leader enters SB_RELEASE. A single, powerful thermal pulse is injected at the root (index 0) of all four strips and travels down-index toward the tip (index 39). Rendered as an anti-aliased bright golden-white head leaving a trailing, decaying wake of pure heat (no sparks, no fragmentation). The effect flags `done=true` and terminates the moment the waves roll off index 39."
+                    }
+                }
+            }
+        },
+        {
+            "effect_name": "Fire Blessing (Holy Purification & Drifting Embers)",
+            "purpose": "Simulates a serene, magical moment of phoenix healing where the living fire purges its raw, chaotic impurities to become a sacred, holy element. The body of the creature transforms with brilliant white-gold accents in its brightest areas, while all four follower strips release a sparse, slow-drifting cascade of golden micro-particles.",
+            "system_trigger": "The Leader initiates a non-destructive color-filtering profile across the matrix, shifting the active spectrum. Concurrently, it transmits a network broadcast to the Follower to deploy a computationally lightweight particle simulation across all identical structural channels.",
+            "shared_mechanics": {
+                "color_profile": "Pure, sacred white-hot gold highlights layered over rich, deep holy oranges, achieved by slightly reducing aggressive, raw red channels and augmenting golden-orange wavelengths.",
+                "fade_type": "Luminance-gated color channel filtering (altering native hue data conditionally based on pixel brightness thresholds) paired with independent, slow-decay linear particle fading.",
+                "lifecycle_management": "The leader manages global purification and blessing holding states over a fixed temporal window. The follower tracks individual active particle lifetimes symmetrically across all lines, maintaining a slow, floating dissipation cycle until all spawned embers naturally fade away."
+            },
+            "leader_specifications": {
+                "dimensions": "2D Matrix (Scans existing frame buffers pixel-by-pixel to manipulate dynamic color values based on localized luminance thresholds).",
+                "phases": {
+                    "FB_PURIFICATION": "Scans the active matrix frame buffer. For pixels exceeding a high-brightness threshold, it saps a fraction of the raw red channel and boosts the green channel slightly to expand orange saturation, neutralizing the chaotic 'dirty' red cast.",
+                    "FB_BLESSING": "Injects clean white accents exclusively into the absolute brightest core regions of the existing fire. This non-destructive overlay changes the texture of the fire to look intensely pure and 'holy' without increasing its base physical footprint or global brightness.",
+                    "FB_FADE": "Smoothly eases out the color-filtering masks and white accents over a linear ramp, allowing the standard native background fire simulation to gently re-emerge."
+                }
+            },
+            "follower_specifications": {
+                "dimensions": "1D Linear Strips (Drives 4 identical structural lines with a minimalist, low-overhead particle allocation array optimized for resource-constrained MCUs).",
+                "propagation_mechanics": {
+                    "all_strips": "Strips 0, 1, 2, and 3. All four lines execute a unified spawning logic, generating rare, tiny white-gold particles that float outward from root to tip (index 0 toward index 39) at a slow, graceful pace to mimic weightless, drifting holy embers.",
+                    "wave_front_rendering": "Renders single-pixel white-gold sparks (`CRGB(255, 220, 180)`) with an anti-aliased subpixel position. These particles use a randomized spawn chance per line to keep the overall density exceptionally low, scattering them across the structure. They utilize an ultra-gentle pixel decay factor that leaves no long thermal trails, ensuring the effect remains clean, stark, and computationally cheap."
+                }
+            }
+        }
+    ]
+}
+
+## Next effect description
+
+{
+  "effect_name": "Aetheric Prism — Sorcerer's Eclipse (Leader/Follower Architecture)",
+  "purpose": "Simulates a highly magical, celestial event where the phoenix's fire undergoes a raw alchemical transformation. The natural orange flames are optically sheared into a vibrant, chromatic spectrum of cosmic magenta and deep violet, before collapsing into an ultra-saturated indigo void that dramatically snaps back into a blinding golden solar flare.",
+  "system_trigger": "The Leader initiates a sweeping color-channel inversion across the matrix. At the exact moment the matrix center hits absolute color desaturation (the eye of the eclipse), it broadcasts the effect ID, triggering a high-velocity, reverse-chromatic shockwave that rips from the tips of all four follower strips inward to the body.",
+  "shared_mechanics": {
+    "color_profile": "A striking shifting spectrum transitioning from native fire orange to iridescent magenta, deepening into a cosmic violet/indigo void (`CRGB(15, 0, 60)`), then detonating into a pure, white-hot gold restoration flare.",
+    "fade_type": "Direct cross-channel mathematical manipulation (destructive channel swapping, bit-shifting, and blue-inversion) followed by a high-intensity, non-destructive additive color burst during the restoration phase.",
+    "lifecycle_management": "The leader dictates a 3-part celestial timeline (Shear, Eclipse, Flare). The follower holds all strips in a unified, localized color-warped stasis before executing a simultaneous high-velocity inward color-collapse that matches the Leader's explosive return to reality."
+  },
+  "leader_specifications": {
+    "dimensions": "2D Matrix (Dynamically scans, reads, and overwrites the active live color channels of every individual pixel in the flame buffer).",
+    "phases": {
+      "AP_PRISM_SHEAR": "3,500ms. A magical wave-front expands radially from the center of the matrix. For all pixels caught inside the expanding radius, their color values are mathematically re-mapped: the raw Red channel value is injected into the Blue channel, Green is scaled down by 50% to create deep magentas, and Blue is inverted (`255 - Blue`) to produce a highly luminescent violet. The native fire is literally transformed into an iridescent cosmic flame.",
+      "AP_INDIGO_ECLIPSE": "1,500ms. The transformed magenta/violet fire is crushed down into a deep, low-luminance indigo void. Red and Green channels are heavily attenuated (`nscale8` down to 10%), while the Blue channel is locked at a low, pulsing ambient glow. The phoenix appears as a dark, breathing silhouette of cold magical energy.",
+      "AP_SOLAR_FLARE": "2,000ms. The void snaps. A blinding, white-hot golden additive wave sweeps vertically upward from `y=0` to `y=MATRIX_HEIGHT-1`. Red and Green are overdriven (`qadd8` with 255 and 150 respectively), instantly burning away the indigo cast and cleanly transitioning the matrix back to a roaring, ultra-bright native fire palette."
+    }
+  },
+  "follower_specifications": {
+    "dimensions": "1D Linear Strips (Reads the live data across 4 identical, symmetric strips and applies localized channel-swapping mathematics directly to the arrays).",
+    "propagation_mechanics": {
+      "all_strips": "Strips 0, 1, 2, and 3. During the Leader's Shear phase, all four lines track the color change identically. When the Leader hits the Eclipse phase, all strips simultaneously freeze their active pixel brightness values and shift into a matching deep violet palette, applying a subtle, rolling 16-bit sine wave (`beatsin16`) across the pixels to cause the deep indigo extremities to shimmer uniformly like velvet in the wind.",
+      "wave_front_rendering": "The instant the network broadcast hits, all four strips execute a synchronized inward 'Centripetal Implosion'. A high-velocity wave of pure white-hot gold rushes *inward* from the feather tips (index 39) down to the roots (index 0) using the unified fixed-point tracking velocity handle (`FWS_RAW_SPEED`). As the wave-front passes, it restores the inverted purple/indigo pixels back to their normal, hyper-saturated native fire colors, perfectly aligning with the Leader's Solar Flare."
+    }
+  }
+}
