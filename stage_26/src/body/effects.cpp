@@ -29,14 +29,14 @@ struct EffectEntry {
 // Selection Table Pool
 const EffectEntry effects[] = {
   { 1, 5 },   // SparkleEffect
-  { 2, 2 },   // OutlineEffect
-  { 3, 4 },   // EmberEffect
+  { 2, 3 },   // OutlineEffect
+  { 3, 3 },   // EmberEffect
   { 4, 2 },   // RebirthEffect
   { 5, 2 },   // FeatherCascadeEffect
-  { 6, 1 },   // PrideCascadeEffect
+  { 6, 2 },   // PrideCascadeEffect
   { 7, 1 },   // CelestialAscensionEffect
   { 8, 3 },   // FawkesWeepsEffect
-  { 9, 2 },   // SacredBreathEffect
+  { 9, 5 },   // SacredBreathEffect
   { 10, 2 },  // FireBlessing
   { 11, 2 },  // AethericPrismEffect
   { 12, 6 },  // WingsEffect
